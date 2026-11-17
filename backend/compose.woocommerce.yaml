@@ -1,0 +1,59 @@
+name: dealfinder-wc-demo
+services:
+  wc-db:
+    image: mariadb:11.4
+    environment:
+      MARIADB_DATABASE: wc_demo
+      MARIADB_USER: wc_demo
+      MARIADB_PASSWORD: ${WC_DEMO_DB_PASSWORD:?Set local demo password}
+      MARIADB_ROOT_PASSWORD: ${WC_DEMO_ROOT_PASSWORD:?Set local root password}
+    volumes:
+      - wc_db_data:/var/lib/mysql
+    healthcheck:
+      test: ['CMD', 'healthcheck.sh', '--connect', '--innodb_initialized']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  wc-store:
+    image: wordpress:php8.3-apache
+    depends_on:
+      wc-db:
+        condition: service_healthy
+    environment: &wordpress_environment
+      WORDPRESS_DB_HOST: wc-db
+      WORDPRESS_DB_NAME: wc_demo
+      WORDPRESS_DB_USER: wc_demo
+      WORDPRESS_DB_PASSWORD: ${WC_DEMO_DB_PASSWORD:?Set local demo password}
+    ports:
+      - '127.0.0.1:8088:80'
+    volumes:
+      - wc_wordpress_data:/var/www/html
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'php',
+          '-r',
+          'exit(is_file("/var/www/html/wp-config.php") ? 0 : 1);',
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  wc-setup:
+    image: wordpress:cli-php8.3
+    user: '33:33'
+    profiles: ['setup']
+    depends_on:
+      wc-store:
+        condition: service_healthy
+    environment:
+      <<: *wordpress_environment
+      WP_CLI_CACHE_DIR: /tmp/wp-cli-cache
+      WC_DEMO_ADMIN_PASSWORD: ${WC_DEMO_ADMIN_PASSWORD:?Set local admin password}
+    volumes:
+      - wc_wordpress_data:/var/www/html
+      - ./dev/woocommerce:/demo:ro
+    entrypoint: ['sh', '/demo/setup.sh']
+volumes:
+  wc_db_data:
+  wc_wordpress_data:

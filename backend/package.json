@@ -16,7 +16,9 @@
     "format:check": "prettier --check .",
     "prisma:validate": "prisma validate",
     "prisma:generate": "prisma generate",
-    "db:check": "tsx src/database/check.ts"
+    "db:check": "tsx src/database/check.ts",
+    "bestbuy:sample": "tsx src/scripts/bestbuy-sample.ts",
+    "woocommerce:sample": "tsx src/scripts/woocommerce-sample.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.0.0",
