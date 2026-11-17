@@ -1,6 +1,6 @@
 # DealFinder
 
-المرجع الأساسي هو [PROJECT_SPEC.md](PROJECT_SPEC.md). اكتملت بنية Backend وبيئة التطوير واتصال PostgreSQL في المرحلة الأولى. Best Buy موقوف مؤقتًا وطلب AliExpress قيد المراجعة. يجري التحقق من WooCommerceProvider ضمن المرحلة الثانية ببيانات اختبار محلية فقط؛ لا يوجد متجر خارجي مصرح به للاستخدام التجاري. لا توجد جداول أعمال أو تطبيق Flutter بعد.
+المرجع الأساسي هو [PROJECT_SPEC.md](PROJECT_SPEC.md). أضيفت في المرحلة الثالثة قاعدة المنتجات والعروض وواجهات القراءة باستخدام بيانات تطوير اصطناعية فقط. Best Buy موقوف مؤقتًا وطلب AliExpress قيد المراجعة وWooCommerce مختبر بـMock؛ لا يوجد متجر خارجي مصرح به للاستخدام التجاري. لا يوجد تطبيق Flutter بعد.
 
 ## متطلبات التشغيل
 
@@ -43,7 +43,14 @@ npm run db:check
 
 يمكن استخدام PostgreSQL محلي موجود بتعديل `DATABASE_URL` دون Docker. ينفذ `db:check` استعلام `SELECT 1` عبر Prisma، ثم يغلق الاتصال ويعيد رمز خروج غير صفري عند الفشل. لا ينشئ أي جداول.
 
-يحتوي `prisma/schema.prisma` على إعداد المولد ومصدر PostgreSQL فقط. يقرأ `prisma.config.ts` رابط الاتصال من البيئة وفق إعداد Prisma 7، ويستخدم العميل محول PostgreSQL. لم تُنشأ Models أو Migrations في هذه المرحلة. يعاد توليد العميل أثناء البناء، ولا يُحفظ الناتج المولد في Git.
+يحتوي `prisma/schema.prisma` على merchants وcategories وproducts وoffers وsync_runs. يقرأ `prisma.config.ts` رابط الاتصال من البيئة وفق إعداد Prisma 7. طبّق الترحيلات قبل استخدام واجهات المنتجات؛ يعاد توليد العميل أثناء البناء ولا يُحفظ الناتج المولد في Git.
+
+```powershell
+npm run db:migrate
+npm run db:seed
+```
+
+Seed للتطوير المحلي فقط، وبياناته موسومة DEMO و`isSynthetic=true` وتُحجب في الإنتاج. تفاصيل الجداول والإدخال والاحتفاظ والمرشحات وأمثلة REST وإعداد قاعدة الاختبار المستقلة في [دليل قاعدة المنتجات والعروض](docs/CATALOG.md). لا تستخدم أوامر reset لحل اختلافات قاعدة بيانات قائمة.
 
 لإيقاف الحاوية مع الاحتفاظ بالبيانات:
 
@@ -112,7 +119,8 @@ npm run woocommerce:sample -- --on-sale --limit 20
 
 ```text
 backend/
-  prisma/schema.prisma       إعداد قاعدة البيانات بلا جداول
+  prisma/schema.prisma       نماذج المنتجات والعروض وسياسات المصادر
+  prisma/migrations/        ترحيلات PostgreSQL المراجعة
   prisma.config.ts          إعداد Prisma CLI
   src/
     app.ts                  تركيب Express دون فتح منفذ
@@ -120,7 +128,8 @@ backend/
     config/env.ts           قراءة الإعدادات والتحقق منها
     config/bestbuy.ts       إعداد مفتاح Best Buy والمهلة بشكل مستقل
     routes/index.ts         مسارات API v1
-    controllers/            معالجة طلبات HTTP
+    controllers/            معالجة طلبات HTTP وفحص المدخلات
+    services/               استعلامات الكتالوج والإدخال والحساب العشري
     middleware/             404 ومعالجة الأخطاء المركزية
     database/               إنشاء عميل Prisma وفحص الاتصال
     utils/logger.ts         سجلات JSON دون أسرار
@@ -130,8 +139,8 @@ backend/
   compose.yaml              PostgreSQL للتطوير المحلي
 ```
 
-عند بدء المراحل المعنية ستضاف `src/services/` لمنطق الأعمال و`src/jobs/` لمهام التحديث. لا توجد ملفات أو طبقات فارغة تمهيدية. لا تستخدم Health Service لأن فحص الصحة الحالي لا يحتاج منطق أعمال.
+ستضاف `src/jobs/` فقط عند بدء مرحلة مهام التحديث. لا توجد ملفات أو طبقات فارغة تمهيدية. لا تستخدم Health Service لأن فحص الصحة الحالي لا يحتاج منطق أعمال.
 
-المفاتيح تبقى في إعدادات الخادم ولا تُرسل للموبايل. لا يوجد تسجيل دخول أو تخزين لمنتجات المتاجر. إعداد Docker هنا للتطوير المحلي فقط؛ إعداد الإنتاج والنشر ضمن مرحلتهما المنفصلة.
+المفاتيح تبقى في إعدادات الخادم ولا تُرسل للموبايل. لا يوجد تسجيل دخول أو تخزين لمنتجات تجارية حقيقية. إعداد Docker هنا للتطوير المحلي فقط؛ إعداد الإنتاج والنشر ضمن مرحلتهما المنفصلة.
 
 مراجع الإعداد: [Prisma 7](https://www.prisma.io/docs/orm/v7)، و[معالجة الأخطاء في Express 5](https://expressjs.com/en/5x/guide/error-handling/).

@@ -5,6 +5,7 @@ coverage/
 .env.*
 !.env.example
 !.env.woocommerce.example
+!.env.test.example
 *.log
 backend/src/generated/
 .DS_Store

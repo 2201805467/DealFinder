@@ -1,0 +1,280 @@
+{
+  "notice": "SYNTHETIC DEVELOPMENT DATA ONLY. Captured from the built local Backend against development PostgreSQL.",
+  "examples": [
+    {
+      "request": "GET /api/v1/health",
+      "status": 200,
+      "response": {
+        "status": "ok",
+        "service": "dealfinder-backend"
+      }
+    },
+    {
+      "request": "GET /api/v1/deals?currency=USD&sort=price_asc&pageSize=1",
+      "status": 200,
+      "response": {
+        "data": [
+          {
+            "id": "42cac3b5-bf77-41c0-929d-e26b5e18a16a",
+            "product": {
+              "id": "2d464dad-5e27-491d-b68e-73cf3ed5bdc3",
+              "name": "DEMO USB Cable",
+              "description": "SYNTHETIC DEVELOPMENT DATA. Not a commercial product or offer.",
+              "categoryId": "afed3acc-ed88-42ba-844f-08c33444421f",
+              "imageUrl": null,
+              "isSynthetic": true,
+              "createdAt": "2026-11-17T20:53:29.121Z",
+              "updatedAt": "2026-11-17T20:53:29.121Z"
+            },
+            "merchant": {
+              "id": "76429993-03aa-4a64-9ec5-b8842e06fc95",
+              "name": "DEMO alpha",
+              "sourceType": "SYNTHETIC",
+              "websiteUrl": "https://alpha.example.invalid",
+              "enabled": true,
+              "isSynthetic": true
+            },
+            "externalProductId": "cable",
+            "variantKey": null,
+            "currentPrice": "15",
+            "referencePrice": "20",
+            "discountPercentage": "25",
+            "currency": "USD",
+            "market": "US",
+            "productUrl": "https://alpha.example.invalid/products/cable",
+            "affiliateUrl": null,
+            "availability": "AVAILABLE",
+            "lastUpdatedAt": "2026-11-17T20:53:29.068Z",
+            "expiresAt": "2026-11-18T20:53:29.068Z",
+            "isSynthetic": true
+          }
+        ],
+        "pagination": {
+          "page": 1,
+          "pageSize": 1,
+          "total": 4,
+          "totalPages": 4
+        }
+      }
+    },
+    {
+      "request": "GET /api/v1/products?pageSize=1",
+      "status": 200,
+      "response": {
+        "data": [
+          {
+            "id": "00256967-a5c2-45c8-a3ba-4ca2588820fe",
+            "name": "DEMO Headphones",
+            "description": "SYNTHETIC DEVELOPMENT DATA. Not a commercial product or offer.",
+            "categoryId": "2b4e4159-4fb5-4651-8add-066b8524162b",
+            "imageUrl": null,
+            "isSynthetic": true,
+            "createdAt": "2026-11-17T20:53:29.131Z",
+            "updatedAt": "2026-11-17T20:53:29.131Z",
+            "category": {
+              "id": "2b4e4159-4fb5-4651-8add-066b8524162b",
+              "name": "DEMO Audio",
+              "slug": "demo-audio",
+              "parentId": "afed3acc-ed88-42ba-844f-08c33444421f",
+              "isSynthetic": true
+            },
+            "offers": [
+              {
+                "id": "d9bdf94d-9d41-41c5-b245-9481d36d9696",
+                "product": {
+                  "id": "00256967-a5c2-45c8-a3ba-4ca2588820fe",
+                  "name": "DEMO Headphones",
+                  "description": "SYNTHETIC DEVELOPMENT DATA. Not a commercial product or offer.",
+                  "categoryId": "2b4e4159-4fb5-4651-8add-066b8524162b",
+                  "imageUrl": null,
+                  "isSynthetic": true,
+                  "createdAt": "2026-11-17T20:53:29.131Z",
+                  "updatedAt": "2026-11-17T20:53:29.131Z"
+                },
+                "merchant": {
+                  "id": "76429993-03aa-4a64-9ec5-b8842e06fc95",
+                  "name": "DEMO alpha",
+                  "sourceType": "SYNTHETIC",
+                  "websiteUrl": "https://alpha.example.invalid",
+                  "enabled": true,
+                  "isSynthetic": true
+                },
+                "externalProductId": "headphones",
+                "variantKey": null,
+                "currentPrice": "99.99",
+                "referencePrice": "129.99",
+                "discountPercentage": "23.08",
+                "currency": "USD",
+                "market": "US",
+                "productUrl": "https://alpha.example.invalid/products/headphones",
+                "affiliateUrl": null,
+                "availability": "AVAILABLE",
+                "lastUpdatedAt": "2026-11-17T20:53:29.068Z",
+                "expiresAt": "2026-11-18T20:53:29.068Z",
+                "isSynthetic": true
+              }
+            ]
+          }
+        ],
+        "pagination": {
+          "page": 1,
+          "pageSize": 1,
+          "total": 11,
+          "totalPages": 11
+        }
+      }
+    },
+    {
+      "request": "GET /api/v1/deals/42cac3b5-bf77-41c0-929d-e26b5e18a16a",
+      "status": 200,
+      "response": {
+        "data": {
+          "id": "42cac3b5-bf77-41c0-929d-e26b5e18a16a",
+          "product": {
+            "id": "2d464dad-5e27-491d-b68e-73cf3ed5bdc3",
+            "name": "DEMO USB Cable",
+            "description": "SYNTHETIC DEVELOPMENT DATA. Not a commercial product or offer.",
+            "categoryId": "afed3acc-ed88-42ba-844f-08c33444421f",
+            "imageUrl": null,
+            "isSynthetic": true,
+            "createdAt": "2026-11-17T20:53:29.121Z",
+            "updatedAt": "2026-11-17T20:53:29.121Z"
+          },
+          "merchant": {
+            "id": "76429993-03aa-4a64-9ec5-b8842e06fc95",
+            "name": "DEMO alpha",
+            "sourceType": "SYNTHETIC",
+            "websiteUrl": "https://alpha.example.invalid",
+            "enabled": true,
+            "isSynthetic": true
+          },
+          "externalProductId": "cable",
+          "variantKey": null,
+          "currentPrice": "15",
+          "referencePrice": "20",
+          "discountPercentage": "25",
+          "currency": "USD",
+          "market": "US",
+          "productUrl": "https://alpha.example.invalid/products/cable",
+          "affiliateUrl": null,
+          "availability": "AVAILABLE",
+          "lastUpdatedAt": "2026-11-17T20:53:29.068Z",
+          "expiresAt": "2026-11-18T20:53:29.068Z",
+          "isSynthetic": true
+        }
+      }
+    },
+    {
+      "request": "GET /api/v1/products/00256967-a5c2-45c8-a3ba-4ca2588820fe",
+      "status": 200,
+      "response": {
+        "data": {
+          "id": "00256967-a5c2-45c8-a3ba-4ca2588820fe",
+          "name": "DEMO Headphones",
+          "description": "SYNTHETIC DEVELOPMENT DATA. Not a commercial product or offer.",
+          "categoryId": "2b4e4159-4fb5-4651-8add-066b8524162b",
+          "imageUrl": null,
+          "isSynthetic": true,
+          "createdAt": "2026-11-17T20:53:29.131Z",
+          "updatedAt": "2026-11-17T20:53:29.131Z",
+          "category": {
+            "id": "2b4e4159-4fb5-4651-8add-066b8524162b",
+            "name": "DEMO Audio",
+            "slug": "demo-audio",
+            "parentId": "afed3acc-ed88-42ba-844f-08c33444421f",
+            "isSynthetic": true
+          },
+          "offers": [
+            {
+              "id": "d9bdf94d-9d41-41c5-b245-9481d36d9696",
+              "product": {
+                "id": "00256967-a5c2-45c8-a3ba-4ca2588820fe",
+                "name": "DEMO Headphones",
+                "description": "SYNTHETIC DEVELOPMENT DATA. Not a commercial product or offer.",
+                "categoryId": "2b4e4159-4fb5-4651-8add-066b8524162b",
+                "imageUrl": null,
+                "isSynthetic": true,
+                "createdAt": "2026-11-17T20:53:29.131Z",
+                "updatedAt": "2026-11-17T20:53:29.131Z"
+              },
+              "merchant": {
+                "id": "76429993-03aa-4a64-9ec5-b8842e06fc95",
+                "name": "DEMO alpha",
+                "sourceType": "SYNTHETIC",
+                "websiteUrl": "https://alpha.example.invalid",
+                "enabled": true,
+                "isSynthetic": true
+              },
+              "externalProductId": "headphones",
+              "variantKey": null,
+              "currentPrice": "99.99",
+              "referencePrice": "129.99",
+              "discountPercentage": "23.08",
+              "currency": "USD",
+              "market": "US",
+              "productUrl": "https://alpha.example.invalid/products/headphones",
+              "affiliateUrl": null,
+              "availability": "AVAILABLE",
+              "lastUpdatedAt": "2026-11-17T20:53:29.068Z",
+              "expiresAt": "2026-11-18T20:53:29.068Z",
+              "isSynthetic": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "request": "GET /api/v1/categories?pageSize=1",
+      "status": 200,
+      "response": {
+        "data": [
+          {
+            "id": "2b4e4159-4fb5-4651-8add-066b8524162b",
+            "name": "DEMO Audio",
+            "slug": "demo-audio",
+            "parentId": "afed3acc-ed88-42ba-844f-08c33444421f",
+            "isSynthetic": true
+          }
+        ],
+        "pagination": {
+          "page": 1,
+          "pageSize": 1,
+          "total": 3,
+          "totalPages": 3
+        }
+      }
+    },
+    {
+      "request": "GET /api/v1/merchants?pageSize=1",
+      "status": 200,
+      "response": {
+        "data": [
+          {
+            "id": "76429993-03aa-4a64-9ec5-b8842e06fc95",
+            "name": "DEMO alpha",
+            "sourceType": "SYNTHETIC",
+            "websiteUrl": "https://alpha.example.invalid",
+            "enabled": true,
+            "isSynthetic": true
+          }
+        ],
+        "pagination": {
+          "page": 1,
+          "pageSize": 1,
+          "total": 2,
+          "totalPages": 2
+        }
+      }
+    },
+    {
+      "request": "GET /api/v1/deals?sort=price_asc",
+      "status": 400,
+      "response": {
+        "error": {
+          "code": "CURRENCY_REQUIRED",
+          "message": "Price ranges and price sorting require a single currency."
+        }
+      }
+    }
+  ]
+}

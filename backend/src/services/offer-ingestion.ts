@@ -1,0 +1,335 @@
+import { z } from 'zod';
+import type { PrismaClient } from '../generated/prisma/client.js';
+import type { StoreProduct } from '../providers/store-provider.js';
+import { AppError } from '../utils/app-error.js';
+import { calculatedDiscount, exactMoney } from './money.js';
+
+const httpUrl = z.url().refine((value) => /^https?:\/\//i.test(value));
+const inputSchema = z.object({
+  externalId: z.string().trim().min(1).max(200),
+  store: z.string().min(1),
+  name: z.string().trim().min(1).max(500),
+  description: z.string().max(20000).optional(),
+  imageUrl: httpUrl.optional(),
+  productUrl: httpUrl.optional(),
+  currency: z
+    .string()
+    .regex(/^[A-Z]{3}$/)
+    .optional(),
+  market: z
+    .string()
+    .regex(/^[A-Z]{2}$/)
+    .optional(),
+  availability: z.enum(['available', 'unavailable']).optional(),
+  fetchedAt: z.iso.datetime({ offset: true }),
+  currentPrice: z.number().finite().nonnegative().optional(),
+  originalPrice: z.number().finite().nonnegative().optional(),
+  priceRestricted: z.boolean().optional(),
+  discountPercentage: z.number().optional(),
+});
+export interface IngestionItem {
+  product: StoreProduct;
+  variantKey?: string;
+  affiliateUrl?: string;
+  categoryId?: string;
+  // Explicit, verified association only. Names never imply product identity.
+  productId?: string;
+}
+const optionsSchema = z.object({
+  variantKey: z.string().max(200).optional(),
+  affiliateUrl: httpUrl.optional(),
+  categoryId: z.uuid().optional(),
+  productId: z.uuid().optional(),
+});
+
+export class OfferIngestionService {
+  constructor(
+    private readonly db: PrismaClient,
+    private readonly environment: string,
+  ) {}
+
+  async ingest(merchantId: string, items: IngestionItem[]) {
+    if (
+      !z.uuid().safeParse(merchantId).success ||
+      items.length < 1 ||
+      items.length > 100
+    )
+      throw new AppError(
+        400,
+        'INVALID_INPUT',
+        'Provide a merchant and 1..100 normalized products.',
+      );
+    const inputs = items
+      .map((item) => {
+        const parsed = inputSchema.safeParse(item.product);
+        const options = optionsSchema.safeParse(item);
+        if (!parsed.success || !options.success)
+          throw new AppError(
+            400,
+            'INVALID_INPUT',
+            'Normalized product or association is invalid.',
+          );
+        const product = parsed.data;
+        const current = product.priceRestricted
+          ? null
+          : exactMoney(product.currentPrice);
+        const reference = product.priceRestricted
+          ? null
+          : exactMoney(product.originalPrice);
+        if (!product.currency && (current !== null || reference !== null))
+          throw new AppError(
+            400,
+            'CURRENCY_REQUIRED',
+            'A price requires an explicit source currency.',
+          );
+        if (current !== null && reference !== null && reference.lt(current))
+          throw new AppError(
+            400,
+            'INVALID_PRICE',
+            'Reference price must not be lower than current price.',
+          );
+        const date = new Date(product.fetchedAt);
+        if (date.getTime() > Date.now() + 60000)
+          throw new AppError(
+            400,
+            'INVALID_TIMESTAMP',
+            'Retrieval time cannot be in the future.',
+          );
+        return { product, options: options.data, current, reference, date };
+      })
+      .sort((a, b) =>
+        JSON.stringify([
+          a.product.externalId,
+          a.product.market ?? '',
+          a.options.variantKey ?? '',
+          a.product.currency ?? '',
+        ]).localeCompare(
+          JSON.stringify([
+            b.product.externalId,
+            b.product.market ?? '',
+            b.options.variantKey ?? '',
+            b.product.currency ?? '',
+          ]),
+        ),
+      );
+
+    const run = await this.db.merchant.findUnique({
+      where: { id: merchantId },
+    });
+    if (
+      !run ||
+      !run.enabled ||
+      !run.storageAuthorized ||
+      (!run.isSynthetic && !run.authorizationReference?.trim()) ||
+      (run.retentionSeconds === null && !run.allowIndefiniteRetention) ||
+      (run.retentionSeconds !== null && run.retentionSeconds <= 0) ||
+      (run.isSynthetic && this.environment === 'production')
+    )
+      throw new AppError(
+        403,
+        'STORAGE_NOT_AUTHORIZED',
+        'Merchant storage policy does not permit this ingestion.',
+      );
+    const sync = await this.db.syncRun.create({
+      data: { merchantId, sourceType: run.sourceType },
+    });
+    try {
+      const result = await this.db.$transaction(
+        async (tx) => {
+          // Keep policy stable during this batch; a concurrent revocation must wait
+          // for the transaction or be observed before storing provider content.
+          await tx.$executeRaw`SELECT id FROM merchants WHERE id = ${merchantId}::uuid FOR SHARE`;
+          const currentPolicy = await tx.merchant.findUnique({
+            where: { id: merchantId },
+          });
+          if (
+            !currentPolicy ||
+            !currentPolicy.enabled ||
+            !currentPolicy.storageAuthorized ||
+            currentPolicy.retentionSeconds !== run.retentionSeconds ||
+            currentPolicy.allowIndefiniteRetention !==
+              run.allowIndefiniteRetention ||
+            currentPolicy.authorizationReference !==
+              run.authorizationReference ||
+            currentPolicy.isSynthetic !== run.isSynthetic ||
+            currentPolicy.sourceType !== run.sourceType
+          ) {
+            throw new AppError(
+              409,
+              'POLICY_CHANGED',
+              'Merchant policy changed; validate permission again before ingestion.',
+            );
+          }
+          const ids: string[] = [];
+          for (const entry of inputs) {
+            const { product, options, current, reference, date } = entry;
+            if (product.store !== run.name)
+              throw new AppError(
+                400,
+                'SOURCE_MISMATCH',
+                'Product store must match the registered merchant.',
+              );
+            const expiresAt =
+              run.retentionSeconds === null
+                ? null
+                : new Date(date.getTime() + run.retentionSeconds * 1000);
+            if (expiresAt && expiresAt <= new Date())
+              throw new AppError(
+                400,
+                'EXPIRED_INPUT',
+                'Source content has already expired.',
+              );
+            const identity = {
+              merchantId,
+              externalProductId: product.externalId,
+              market: product.market ?? '',
+              variantKey: options.variantKey ?? '',
+              currency: product.currency ?? '',
+            };
+            await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${JSON.stringify(identity)}, 0))`;
+            const existing = await tx.offer.findUnique({
+              where: { sourceIdentity: identity },
+            });
+            if (existing && existing.lastUpdatedAt > date) {
+              ids.push(existing.id);
+              continue;
+            }
+            if (
+              existing &&
+              options.productId &&
+              existing.productId !== options.productId
+            )
+              throw new AppError(
+                409,
+                'ASSOCIATION_CONFLICT',
+                'An existing source offer cannot be silently reassigned.',
+              );
+            let target = options.productId ?? existing?.productId;
+            if (target) {
+              const linked = await tx.product.findUnique({
+                where: { id: target },
+              });
+              if (!linked || linked.isSynthetic !== run.isSynthetic)
+                throw new AppError(
+                  400,
+                  'INVALID_ASSOCIATION',
+                  'Product association must exist with matching data provenance.',
+                );
+              if (
+                linked.contentMerchantId === merchantId &&
+                linked.contentExternalId === product.externalId
+              ) {
+                await tx.product.update({
+                  where: { id: target },
+                  data: {
+                    name: product.name,
+                    description: product.description ?? null,
+                    imageUrl: product.imageUrl ?? null,
+                    expiresAt,
+                    ...(options.categoryId && {
+                      categoryId: options.categoryId,
+                    }),
+                  },
+                });
+              }
+            } else {
+              target = (
+                await tx.product.create({
+                  data: {
+                    name: product.name,
+                    description: product.description ?? null,
+                    imageUrl: product.imageUrl ?? null,
+                    categoryId: options.categoryId ?? null,
+                    contentMerchantId: merchantId,
+                    contentExternalId: product.externalId,
+                    isSynthetic: run.isSynthetic,
+                    expiresAt,
+                  },
+                })
+              ).id;
+            }
+            const data = {
+              currentPrice: current,
+              referencePrice: reference,
+              discountPercentage: calculatedDiscount(current, reference),
+              productUrl: product.productUrl ?? null,
+              affiliateUrl: options.affiliateUrl ?? null,
+              availability:
+                product.availability === 'available'
+                  ? ('AVAILABLE' as const)
+                  : product.availability === 'unavailable'
+                    ? ('UNAVAILABLE' as const)
+                    : ('UNKNOWN' as const),
+              lastUpdatedAt: date,
+              expiresAt,
+              isSynthetic: run.isSynthetic,
+            };
+            const saved = await tx.offer.upsert({
+              where: { sourceIdentity: identity },
+              create: { ...identity, ...data, productId: target },
+              update: data,
+            });
+            ids.push(saved.id);
+          }
+          await tx.syncRun.update({
+            where: { id: sync.id },
+            data: {
+              status: 'SUCCEEDED',
+              finishedAt: new Date(),
+              processedCount: inputs.length,
+            },
+          });
+          return { syncRunId: sync.id, offerIds: ids };
+        },
+        { timeout: 15000 },
+      );
+      return result;
+    } catch (error) {
+      const safeCode =
+        error instanceof AppError ? error.code : 'INGESTION_FAILED';
+      await this.db.syncRun.update({
+        where: { id: sync.id },
+        data: {
+          status: 'FAILED',
+          finishedAt: new Date(),
+          errorCode: safeCode,
+          errorDetails:
+            'Batch rolled back. No upstream payload or credentials retained.',
+        },
+      });
+      if (error instanceof AppError) throw error;
+      throw new AppError(
+        500,
+        'INGESTION_FAILED',
+        'Product batch could not be stored.',
+      );
+    }
+  }
+
+  // Explicit maintenance, never scheduled. Removes expired provider content, not price history.
+  async purgeExpired(now = new Date()) {
+    return this.db.$transaction(async (tx) => {
+      const offers = await tx.offer.deleteMany({
+        where: { expiresAt: { lte: now } },
+      });
+      // Erase expired licensed text/images even if another merchant still has an
+      // offer linked to this product. Do not cascade-delete that valid offer.
+      const redacted = await tx.product.updateMany({
+        where: { expiresAt: { lte: now } },
+        data: {
+          name: '[Expired source content]',
+          description: null,
+          imageUrl: null,
+        },
+      });
+      const products = await tx.product.deleteMany({
+        where: { expiresAt: { lte: now }, offers: { none: {} } },
+      });
+      return {
+        offers: offers.count,
+        products: products.count,
+        redactedProducts: redacted.count,
+      };
+    });
+  }
+}

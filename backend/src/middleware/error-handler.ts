@@ -1,5 +1,6 @@
 import type { ErrorRequestHandler, RequestHandler } from 'express';
 import { logger } from '../utils/logger.js';
+import { AppError } from '../utils/app-error.js';
 
 export const notFound: RequestHandler = (_request, response) => {
   response
@@ -15,6 +16,13 @@ export const errorHandler: ErrorRequestHandler = (
 ) => {
   if (response.headersSent) {
     next(error);
+    return;
+  }
+
+  if (error instanceof AppError) {
+    response
+      .status(error.status)
+      .json({ error: { code: error.code, message: error.message } });
     return;
   }
 

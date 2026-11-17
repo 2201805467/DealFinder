@@ -18,7 +18,11 @@
     "prisma:generate": "prisma generate",
     "db:check": "tsx src/database/check.ts",
     "bestbuy:sample": "tsx src/scripts/bestbuy-sample.ts",
-    "woocommerce:sample": "tsx src/scripts/woocommerce-sample.ts"
+    "woocommerce:sample": "tsx src/scripts/woocommerce-sample.ts",
+    "db:migrate": "prisma migrate deploy",
+    "db:seed": "tsx src/scripts/seed.ts",
+    "db:purge-expired": "tsx src/scripts/purge-expired.ts",
+    "test:integration": "tsx src/scripts/test-database.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.0.0",
