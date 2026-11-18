@@ -1,0 +1,27 @@
+{
+  "checkedAt": "2026-11-18T11:16:42.506268Z",
+  "baseUrl": "http://127.0.0.1:3000/api/v1",
+  "syntheticOnly": true,
+  "sectionTotals": {
+    "top": 4,
+    "newest": 8,
+    "low_price": 6,
+    "discount_desc": 8
+  },
+  "page1Ids": [
+    "20743bdc-d797-4be3-8f75-5fa9ff428d59",
+    "8262e7e8-e590-44e9-90b2-d3ef9d143666"
+  ],
+  "page2Ids": [
+    "850fa996-a3fe-4d3d-813e-837ac6ad6daf",
+    "a04bbfed-3492-470f-8294-0aa4405ad6ad"
+  ],
+  "sampleOffer": {
+    "id": "20743bdc-d797-4be3-8f75-5fa9ff428d59",
+    "name": "SYNTHETIC Worker DEMO Product 2",
+    "price": "99.99",
+    "currency": "USD"
+  },
+  "categories": 3,
+  "merchants": 3
+}

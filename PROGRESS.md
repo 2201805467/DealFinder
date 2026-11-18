@@ -493,3 +493,89 @@ BestBuyProvider وWooCommerceProvider وعقد StoreProvider واختبارات�
 - التنظيف يحتاج العامل واتصال DB يعملان؛ ليس ضمانًا للحذف الفوري عند الانقطاع. يظل أمر db:purge-expired متاحًا إداريًا، ويلزم هامش آمن في مدة التنظيف لأي ترخيص تجاري لاحق.
 - دعم الإلغاء أُثبت بالـAbortSignal، وليس بفرض أن كل إنهاء قسري على Windows يمر بمعالج SIGTERM. الصفحات المحفوظة تبقى، وتُعالج RUNNING المتروكة لاحقًا.
 - لا أخطاء بناء أو اختبارات متبقية معروفة. لم يبدأ Flutter أو تسجيل الدخول أو المفضلة أو إشعارات أو تحويل عملات أو نشر. توقف العمل بعد المرحلة الرابعة انتظارًا للمراجعة؛ المرحلة الخامسة لم تبدأ.
+
+## المرحلة الخامسة — تطبيق Flutter (2026-11-18)
+
+نُفذت المرحلة الخامسة وفق PROJECT_SPEC.md وطلب الموبايل التفصيلي، بعد مراجعة الكود ووثائق REST واستجابات HTTP الفعلية. لا يزال Best Buy متوقفًا، وAliExpress قيد المراجعة، وWooCommerce غير معتمد تجاريًا. جميع بيانات هذه المرحلة اصطناعية، ولم تُرسل طلبات إلى متاجر خارجية.
+
+### النطاق المنجز والملفات
+
+أُنشئ مشروع `mobile` بمنصات Android وiOS وWeb (الأخيرة أداة تشغيل اختيارية، وليست موقعًا منشورًا). البنية حسب الميزات:
+
+- `mobile/lib/main.dart`: تهيئة SharedPreferences وRiverpod.
+- `mobile/lib/app.dart`: Material 3 وLight/Dark/System وGoRouter مع Home/Explore/Favorites/Settings وحفظ حالة الفروع.
+- `mobile/lib/core/config.dart`: API_BASE_URL وDemo/Release والتحقق من HTTPS والروابط العامة، دون أسرار.
+- `mobile/lib/core/widgets.dart`: Demo Notice وSkeleton وempty/error/retry وإبلاغ فشل حفظ التفضيلات.
+- `mobile/lib/core/retention.dart`: إخفاء محتوى العرض عند انتهاء الصلاحية حتى إذا بقيت الشاشة مفتوحة.
+- `mobile/lib/features/catalog/domain/models.dart`: نماذج العرض والخيارات والصفحات والاستعلامات؛ أسعار Decimal نصية ومقارنة BigInt دون حساب مالي بـdouble.
+- `mobile/lib/features/catalog/data/catalog_repository.dart`: Dio بمهل اتصال/قراءة/إرسال، وإلغاء وأخطاء آمنة وقراءة REST؛ منع إعادة المحاولة التلقائية غير المقصودة في FutureProviders.
+- `mobile/lib/features/catalog/application/explore_controller.dart`: Debounce 350ms وإلغاء الطلب القديم ومنع النتائج المتأخرة، Pagination ومنع التكرار والتزامن وحفظ المحتوى عند فشل صفحة لاحقة.
+- `mobile/lib/features/catalog/presentation/home_screen.dart`: أقسام Top/Latest/Low Price/Biggest Discounts من Backend، حتى 6 عناصر لكل قسم وتحميل تدريجي.
+- `mobile/lib/features/catalog/presentation/explore_screen.dart`: البحث والترتيب والصفحات/Sroll وPull to Refresh وشبكة متجاوبة.
+- `mobile/lib/features/catalog/presentation/filters_sheet.dart`: المتجر والتصنيف والسوق والعملة ونطاق السعر، والتحقق المطابق لقيود Backend وإعادة الضبط.
+- `mobile/lib/features/catalog/presentation/offer_card.dart`: بطاقة وصورة محلية بديلة وأسعار/مرجع/خصم موثوق وتوفر ومفضلة، دون صور خارجية للبيانات الاصطناعية.
+- `mobile/lib/features/catalog/presentation/detail_screen.dart`: تفاصيل حديثة وشحن وتقييم وأسباب، والتحقق من الرابط وتعطيل View Deal للبيانات الاصطناعية/غير الصالحة.
+- `mobile/lib/features/favorites/favorites_screen.dart`: قوائم محلية تعيد جلب التفاصيل، مع حالات انتهاء/اختفاء العرض وRetry/Remove.
+- `mobile/lib/features/preferences/preferences.dart`: مستودع Favorites قابل للاستبدال، وحفظ معرف العرض ومعرف المنتج فقط دون أسعار أو صور؛ حفظ السوق والعملة والثيم.
+- `mobile/lib/features/preferences/settings_screen.dart`: تفضيلات السوق/العملة/الثيم والتعريف والإفصاح وعدم إدارة الشراء أو تحويل العملات.
+- `mobile/test/models_test.dart` و`repository_test.dart` و`state_test.dart` و`widget_test.dart` و`support.dart`: استجابات HTTP اصطناعية داخل الاختبارات فقط.
+- `mobile/tool/backend_smoke_test.dart`: اختبار HTTP محلي منفصل لا يعمل مع الاختبارات الافتراضية ولا يطلب متجرًا خارجيًا.
+- `mobile/docs/live-backend-check.json`: تقرير مولد من اتصال Dio الفعلي بالخادم المحلي.
+- `mobile/docs/screenshots/`: صور فعلية من Android Emulator، وليست صور تصميم أو Mockups.
+- `mobile/pubspec.yaml` و`pubspec.lock` و`analysis_options.yaml` وملفات المنصات القياسية من Flutter؛ إعداد Internet وأيقونة Android محلية وHTTP في Debug فقط، و`ios/Runner/Info-Debug.plist` مربوط بإعداد Debug فقط.
+- `mobile/README.md`: دليل البنية والتشغيل والاختبار والسلامة والقيود؛ وُحدث `README.md` الرئيسي وهذا الملف.
+
+لم يُعدل كود Backend أو Schema أو Migrations أو StoreProvider أو الاختبارات السابقة. الاسترجاع الاحتياطي لـLow Price يستخدم `/products/:productId` الموجود عندما لا يعيد `/deals/:id` عرضًا غير مخفض؛ تُحفظ الهويتان محليًا دون نسخة قديمة من بيانات العرض. أُعيد تشغيل seed الموجود وجولة Worker واحدة لتجديد بيانات التطوير بصورة إضافية دون مسحها؛ لم تُفعّل أعلام Worker في `.env` بصورة دائمة ولم يُترك Worker دوري يعمل.
+
+### قواعد العرض والإنتاج
+
+- البيانات الاصطناعية موسومة في Home والبطاقات والتفاصيل؛ View Deal معطل لها دائمًا.
+- Release يعطل Demo حتى مع DEMO_MODE=true، ويمنع HTTP للـBackend ويحجب بيانات المصدر الاصطناعي أو مجهول المنشأ. اختُبرت هذه القواعد في النماذج والمستودع والواجهة؛ لم يُبنَ APK تجاري Release أو يُنشر شيء.
+- الأسعار تبقى Decimal Strings، والعملة مرشح فقط. تغييرها يمسح نطاق السعر لتجنب المقارنة العابرة للعملات.
+- لا يُعرض المرجع/الخصم عند غياب الثقة أو عدم صلاحية السعر. الشحن المفقود لا يُعامل كأنه مجاني.
+- لا تخزين دائم لأسعار أو كتالوج أو صور. SharedPreferences تحفظ التفضيلات ومعرفات المفضلة فقط؛ جلب الصور التجارية مستقبلًا مشروط بمصدر مصرح به، وبيانات Demo لا تطلب أي صور خارجية.
+- العروض المنتهية تُستبعد عند الجلب، وتُخفى أسعارها وصورها عند بلوغ expiresAt أثناء فتح الواجهة. بيانات stale وغير المتوفرة في المفضلة تعرض تنبيهًا وتمنع رابط الشراء.
+- اللغة الإنجليزية فقط حاليًا، مع localization delegates وتخطيط قابل للتوسعة للغات/RTL، دون ادعاء ترجمة عربية منجزة.
+- لا فلاتر وهمية لحد الخصم أو التوفر؛ Backend الحالي لا يقبلها. التصنيف والمتجر والبحث والنطاق تبقى في ذاكرة Explore أثناء التنقل، والسوق والعملة والثيم تُحفظ بعد إغلاق التطبيق.
+
+### أدوات التشغيل والاتصال الفعلي
+
+تحقق `flutter doctor -v`: Flutter 3.44.2 stable وDart 3.12.2 وJDK 17.0.19 وAndroid SDK 36.0.0، والتراخيص كلها مقبولة بعد أن راجعها صاحب الجهاز. عدم وجود Visual Studio يخص Windows Desktop ولا يمنع بناء Android. لم تُثبت أدوات كبيرة أو تُغير إعدادات النظام أو جدار الحماية.
+
+من `mobile`:
+
+```powershell
+flutter pub get
+flutter run -d emulator-5554 --dart-define=API_BASE_URL=http://10.0.2.2:3000/api/v1 --dart-define=DEMO_MODE=true
+flutter test tool/backend_smoke_test.dart --dart-define=API_BASE_URL=http://127.0.0.1:3000/api/v1
+flutter build apk --debug --dart-define=API_BASE_URL=http://10.0.2.2:3000/api/v1 --dart-define=DEMO_MODE=true
+```
+
+تشغيل Backend وPostgreSQL وتجديد seed وطريقة الهاتف الفعلي وiOS Simulator موثقة في `mobile/README.md`. لا يحتاج التطبيق أي مفتاح متجر. على الهاتف الحقيقي يلزم عنوان LAN بدل localhost، والاستماع المحلي المناسب في Backend؛ لم يُختبر هاتف فعلي في هذه الجلسة.
+
+### نتائج التحقق الفعلية
+
+| الفحص | النتيجة |
+| --- | --- |
+| Flutter pub get | نجح؛ قفل الإصدارات مضمّن |
+| Dart format | نجح على lib/test/tool؛ 22 ملف Dart |
+| Flutter analyze | نجح: No issues found |
+| flutter test | **41/41 ناجحة**: 12 للنماذج/الدقة/الروابط، 13 للمستودع/الأخطاء، 6 للحالة/التخزين/البحث/الصفحات، 10 للواجهات |
+| اختبار HTTP المحلي الصريح | **1/1 ناجح**؛ Dio → Express الحالي → PostgreSQL الفعلي |
+| الإجمالي لهذه المرحلة | **42 اختبارًا ناجحًا**، دون اعتبار fixtures بيانات تجارية |
+| الأقسام الحية | Top=4، Latest USD=8، Low Price USD تحت 20=6، Biggest Discounts USD=8 وقت التقرير المحفوظ |
+| تفاصيل التحقق الحي | Health وmetadata والبحث وتفاصيل عرض وصفحتان بمعرفات غير متقاطعة؛ المثال USD 99.99، محفوظ بتوقيت التحقق في JSON |
+| build apk --debug | نجح؛ `mobile/build/app/outputs/flutter-apk/app-debug.apk`، Debug تجريبي متعدد المعماريات |
+| Android Emulator | ثُبت APK وشُغل؛ راجعت Home وExplore والتفاصيل والتقييم وزر View Deal المعطل وSettings/Dark Mode؛ خمس صور فعلية في mobile/docs/screenshots |
+| طلبات مصادر تجارية / منتجات تجارية | **0 / 0** |
+
+تغطي الاختبارات الحقول الاختيارية والأسعار المفقودة/غير الصالحة ودقة الكسور الكبيرة، والثقة في المرجع، وHTTP 400/404/429/500 وTimeout وCancel وJSON غير المتوقع والفراغ، واسترجاع Low Price، والمفضلة المنتهية، وإلغاء البحث ومنع النتائج القديمة، والفلاتر وتغيير العملة، والتكرار وفشل صفحة إضافية، وحفظ/استعادة التفضيلات والمفضلة، والشاشات الضيقة والتنقل والثيمين، وDemo وحماية Release، وإخفاء سعر وصورة العرض المنتهي أثناء فتح الشاشة.
+
+### المشكلات التي عولجت والقيود المتبقية
+
+- عُولج overflow على شاشة 320px ولف سطر السعر داخل البطاقة. عُزلت اختبارات التحميل عن توقيت إطار الملاحة وأُغلقت مؤقتات الاختبار صراحة. لا فشل اختبارات أو أخطاء تحليل معروفة متبقية.
+- تأخر أول بناء Gradle قرابة 9 دقائق؛ نجح البناء بعد ذلك بصورة تزايدية. تعثر snapshot محاكي Pixel_5 أولًا (offline ثم System UI ANR)؛ استُخدم إقلاع بارد وrenderer برمجي للمحاكي الموجود، وأصبح التطبيق يعمل. لم تُمسح بيانات AVD ولم تُعدل خصائص النظام الدائمة.
+- قد يتقادم Worker Demo أثناء جلسة طويلة وتختفي عروضه من Top Deals؛ هذا تطبيق لسياسة Backend. يُجدد يدويًا بأمر Worker opt-in الموثق، دون تجاوز stale أو تشغيل مصدر تجاري.
+- لا مصدر تجاري معتمد، ولا شراء فعلي؛ يلزم تصريح البيانات والصور والروابط قبل الاستخدام التجاري. بيانات الاختبار ليست إثبات وصول لأي API تجاري.
+- لم يُبنَ iOS لعدم توفر macOS/Xcode، ولم يُختبر هاتف فعلي أو نشر/توقيع متاجر أو اختبارات حمل إنتاجية. أيقونات iOS القياسية وباقي تجهيزات النشر تحتاج مراجعتها في مرحلة النشر المصرح بها لاحقًا.
+- لا ترجمة عربية كاملة، ولا تسجيل دخول أو Firebase أو إشعارات أو دفع أو تحويل عملات أو مصادر جديدة. لم تبدأ المرحلة السادسة؛ توقف العمل عند إكمال المرحلة الخامسة انتظارًا للمراجعة.
