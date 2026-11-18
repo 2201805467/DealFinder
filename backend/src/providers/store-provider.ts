@@ -36,5 +36,8 @@ export interface ProductPage {
 
 export interface StoreProvider {
   readonly name: string;
-  searchProducts(search?: ProductSearch): Promise<ProductPage>;
+  searchProducts(
+    search?: ProductSearch,
+    context?: { signal?: AbortSignal },
+  ): Promise<ProductPage>;
 }

@@ -68,7 +68,10 @@ export class BestBuyProvider implements StoreProvider {
     this.#fetch = options.fetch ?? globalThis.fetch;
   }
 
-  async searchProducts(search: ProductSearch = {}): Promise<ProductPage> {
+  async searchProducts(
+    search: ProductSearch = {},
+    context?: { signal?: AbortSignal },
+  ): Promise<ProductPage> {
     const parsed = searchSchema.safeParse(search);
     if (!parsed.success) {
       throw new ProviderError(
@@ -119,7 +122,10 @@ export class BestBuyProvider implements StoreProvider {
       release();
     }
 
-    const signal = AbortSignal.timeout(this.#timeoutMs);
+    const timeout = AbortSignal.timeout(this.#timeoutMs);
+    const signal = context?.signal
+      ? AbortSignal.any([timeout, context.signal])
+      : timeout;
     try {
       const response = await this.#fetch(url, {
         signal,

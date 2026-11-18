@@ -85,7 +85,10 @@ export class WooCommerceProvider implements StoreProvider {
     this.#timeoutMs = timeout;
   }
 
-  async searchProducts(search: ProductSearch = {}): Promise<ProductPage> {
+  async searchProducts(
+    search: ProductSearch = {},
+    context?: { signal?: AbortSignal },
+  ): Promise<ProductPage> {
     const parsed = searchSchema.safeParse(search);
     if (!parsed.success)
       throw new ProviderError(
@@ -104,7 +107,10 @@ export class WooCommerceProvider implements StoreProvider {
     url.searchParams.set('per_page', String(options.pageSize));
     if (options.query) url.searchParams.set('search', options.query);
     if (options.discountedOnly) url.searchParams.set('on_sale', 'true');
-    const signal = AbortSignal.timeout(this.#timeoutMs);
+    const timeout = AbortSignal.timeout(this.#timeoutMs);
+    const signal = context?.signal
+      ? AbortSignal.any([timeout, context.signal])
+      : timeout;
     try {
       const response = await this.#fetch(url, {
         signal,

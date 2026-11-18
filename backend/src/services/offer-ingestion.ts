@@ -34,12 +34,16 @@ export interface IngestionItem {
   categoryId?: string;
   // Explicit, verified association only. Names never imply product identity.
   productId?: string;
+  referencePriceTrusted?: boolean;
+  shippingCost?: string;
 }
 const optionsSchema = z.object({
   variantKey: z.string().max(200).optional(),
   affiliateUrl: httpUrl.optional(),
   categoryId: z.uuid().optional(),
   productId: z.uuid().optional(),
+  referencePriceTrusted: z.boolean().optional(),
+  shippingCost: z.string().optional(),
 });
 
 export class OfferIngestionService {
@@ -48,7 +52,16 @@ export class OfferIngestionService {
     private readonly environment: string,
   ) {}
 
-  async ingest(merchantId: string, items: IngestionItem[]) {
+  async ingest(
+    merchantId: string,
+    items: IngestionItem[],
+    context?: {
+      syncRunId: string;
+      signal?: AbortSignal;
+      syntheticOnly?: boolean;
+    },
+  ) {
+    context?.signal?.throwIfAborted();
     if (
       !z.uuid().safeParse(merchantId).success ||
       items.length < 1 ||
@@ -89,13 +102,27 @@ export class OfferIngestionService {
             'Reference price must not be lower than current price.',
           );
         const date = new Date(product.fetchedAt);
+        const shippingCost = exactMoney(options.data.shippingCost);
+        if (shippingCost !== null && !product.currency)
+          throw new AppError(
+            400,
+            'CURRENCY_REQUIRED',
+            'Shipping requires the offer currency.',
+          );
         if (date.getTime() > Date.now() + 60000)
           throw new AppError(
             400,
             'INVALID_TIMESTAMP',
             'Retrieval time cannot be in the future.',
           );
-        return { product, options: options.data, current, reference, date };
+        return {
+          product,
+          options: options.data,
+          current,
+          reference,
+          date,
+          shippingCost,
+        };
       })
       .sort((a, b) =>
         JSON.stringify([
@@ -123,16 +150,34 @@ export class OfferIngestionService {
       (!run.isSynthetic && !run.authorizationReference?.trim()) ||
       (run.retentionSeconds === null && !run.allowIndefiniteRetention) ||
       (run.retentionSeconds !== null && run.retentionSeconds <= 0) ||
-      (run.isSynthetic && this.environment === 'production')
+      (run.isSynthetic && this.environment === 'production') ||
+      (context && !run.syncEnabled) ||
+      (context?.syntheticOnly &&
+        (!run.isSynthetic || run.sourceType !== 'SYNTHETIC'))
     )
       throw new AppError(
         403,
         'STORAGE_NOT_AUTHORIZED',
         'Merchant storage policy does not permit this ingestion.',
       );
-    const sync = await this.db.syncRun.create({
-      data: { merchantId, sourceType: run.sourceType },
-    });
+    const sync = context
+      ? await this.db.syncRun.findFirst({
+          where: {
+            id: context.syncRunId,
+            merchantId,
+            scope: 'SYNCHRONIZATION',
+            status: 'RUNNING',
+          },
+        })
+      : await this.db.syncRun.create({
+          data: { merchantId, sourceType: run.sourceType },
+        });
+    if (!sync)
+      throw new AppError(
+        400,
+        'INVALID_SYNC_RUN',
+        'Synchronization run is not active for this merchant.',
+      );
     try {
       const result = await this.db.$transaction(
         async (tx) => {
@@ -152,7 +197,9 @@ export class OfferIngestionService {
             currentPolicy.authorizationReference !==
               run.authorizationReference ||
             currentPolicy.isSynthetic !== run.isSynthetic ||
-            currentPolicy.sourceType !== run.sourceType
+            currentPolicy.sourceType !== run.sourceType ||
+            currentPolicy.staleAfterSeconds !== run.staleAfterSeconds ||
+            (context && !currentPolicy.syncEnabled)
           ) {
             throw new AppError(
               409,
@@ -162,7 +209,9 @@ export class OfferIngestionService {
           }
           const ids: string[] = [];
           for (const entry of inputs) {
-            const { product, options, current, reference, date } = entry;
+            context?.signal?.throwIfAborted();
+            const { product, options, current, reference, date, shippingCost } =
+              entry;
             if (product.store !== run.name)
               throw new AppError(
                 400,
@@ -248,10 +297,18 @@ export class OfferIngestionService {
                 })
               ).id;
             }
+            // Synthetic references are controlled test fixtures, not commercial evidence.
+            const referencePriceTrusted =
+              options.referencePriceTrusted ?? run.isSynthetic;
             const data = {
               currentPrice: current,
               referencePrice: reference,
-              discountPercentage: calculatedDiscount(current, reference),
+              discountPercentage: referencePriceTrusted
+                ? calculatedDiscount(current, reference)
+                : null,
+              referencePriceTrusted,
+              shippingCost,
+              staleAt: new Date(date.getTime() + run.staleAfterSeconds * 1000),
               productUrl: product.productUrl ?? null,
               affiliateUrl: options.affiliateUrl ?? null,
               availability:
@@ -271,13 +328,16 @@ export class OfferIngestionService {
             });
             ids.push(saved.id);
           }
+          context?.signal?.throwIfAborted();
           await tx.syncRun.update({
             where: { id: sync.id },
-            data: {
-              status: 'SUCCEEDED',
-              finishedAt: new Date(),
-              processedCount: inputs.length,
-            },
+            data: context
+              ? { processedCount: { increment: inputs.length } }
+              : {
+                  status: 'SUCCEEDED',
+                  finishedAt: new Date(),
+                  processedCount: inputs.length,
+                },
           });
           return { syncRunId: sync.id, offerIds: ids };
         },
@@ -287,16 +347,17 @@ export class OfferIngestionService {
     } catch (error) {
       const safeCode =
         error instanceof AppError ? error.code : 'INGESTION_FAILED';
-      await this.db.syncRun.update({
-        where: { id: sync.id },
-        data: {
-          status: 'FAILED',
-          finishedAt: new Date(),
-          errorCode: safeCode,
-          errorDetails:
-            'Batch rolled back. No upstream payload or credentials retained.',
-        },
-      });
+      if (!context)
+        await this.db.syncRun.update({
+          where: { id: sync.id },
+          data: {
+            status: 'FAILED',
+            finishedAt: new Date(),
+            errorCode: safeCode,
+            errorDetails:
+              'Batch rolled back. No upstream payload or credentials retained.',
+          },
+        });
       if (error instanceof AppError) throw error;
       throw new AppError(
         500,

@@ -1,0 +1,771 @@
+{
+  "notice": "SYNTHETIC MOCK PROVIDER ONLY. No external store requests. Captured after a built worker run and real local PostgreSQL/HTTP.",
+  "offerCounts": {
+    "before": 5,
+    "after": 5
+  },
+  "syncRun": {
+    "id": "22be801a-ae18-4185-bae2-b8b251d0f43c",
+    "merchantId": "e274f2d7-dc1e-4723-9b2c-a6c157b98c36",
+    "sourceType": "SYNTHETIC",
+    "startedAt": "2026-11-18T10:37:06.383Z",
+    "finishedAt": "2026-11-18T10:37:06.557Z",
+    "processedCount": 5,
+    "status": "SUCCEEDED",
+    "errorCode": null,
+    "errorDetails": null,
+    "scope": "SYNCHRONIZATION",
+    "pageCount": 3,
+    "requestCount": 3,
+    "skippedCount": 0,
+    "durationMs": 178
+  },
+  "samples": [
+    {
+      "request": "GET /api/v1/deals?merchantId=e274f2d7-dc1e-4723-9b2c-a6c157b98c36&view=top&sort=score_desc&pageSize=2",
+      "status": 200,
+      "response": {
+        "data": [
+          {
+            "id": "20743bdc-d797-4be3-8f75-5fa9ff428d59",
+            "product": {
+              "id": "6840fe65-25b5-4069-9f69-9cb93cf42321",
+              "name": "SYNTHETIC Worker DEMO Product 2",
+              "description": "Generated test fixture. Not a commercial offer.",
+              "categoryId": null,
+              "imageUrl": null,
+              "isSynthetic": true,
+              "createdAt": "2026-11-18T10:32:46.759Z",
+              "updatedAt": "2026-11-18T10:37:06.455Z"
+            },
+            "merchant": {
+              "id": "e274f2d7-dc1e-4723-9b2c-a6c157b98c36",
+              "name": "SYNTHETIC Worker DEMO Store",
+              "sourceType": "SYNTHETIC",
+              "websiteUrl": "https://worker.example.invalid",
+              "enabled": true,
+              "isSynthetic": true
+            },
+            "externalProductId": "worker-demo-2",
+            "variantKey": null,
+            "currentPrice": "99.99",
+            "referencePrice": "199.98",
+            "discountPercentage": "50",
+            "currency": "USD",
+            "market": "US",
+            "productUrl": "https://worker.example.invalid/products/2",
+            "affiliateUrl": null,
+            "availability": "AVAILABLE",
+            "lastUpdatedAt": "2026-11-18T10:37:06.404Z",
+            "expiresAt": "2026-11-19T10:37:06.404Z",
+            "isSynthetic": true,
+            "isStale": false,
+            "referencePriceTrusted": true,
+            "shippingCost": null,
+            "dealScore": "84.98",
+            "scoreClassification": "TOP_DEAL",
+            "scoreComponents": {
+              "discount": "35",
+              "freshness": "24.9816",
+              "availability": "20",
+              "quality": "5",
+              "shipping": "0"
+            },
+            "scoreReasons": [
+              "SHIPPING_UNKNOWN"
+            ]
+          },
+          {
+            "id": "8262e7e8-e590-44e9-90b2-d3ef9d143666",
+            "product": {
+              "id": "b5f3f529-0762-46de-ab6f-471aed9329af",
+              "name": "SYNTHETIC Worker DEMO Product 4",
+              "description": "Generated test fixture. Not a commercial offer.",
+              "categoryId": null,
+              "imageUrl": null,
+              "isSynthetic": true,
+              "createdAt": "2026-11-18T10:32:46.808Z",
+              "updatedAt": "2026-11-18T10:37:06.505Z"
+            },
+            "merchant": {
+              "id": "e274f2d7-dc1e-4723-9b2c-a6c157b98c36",
+              "name": "SYNTHETIC Worker DEMO Store",
+              "sourceType": "SYNTHETIC",
+              "websiteUrl": "https://worker.example.invalid",
+              "enabled": true,
+              "isSynthetic": true
+            },
+            "externalProductId": "worker-demo-4",
+            "variantKey": null,
+            "currentPrice": "20",
+            "referencePrice": "40",
+            "discountPercentage": "50",
+            "currency": "USD",
+            "market": "US",
+            "productUrl": "https://worker.example.invalid/products/4",
+            "affiliateUrl": null,
+            "availability": "AVAILABLE",
+            "lastUpdatedAt": "2026-11-18T10:37:06.478Z",
+            "expiresAt": "2026-11-19T10:37:06.478Z",
+            "isSynthetic": true,
+            "isStale": false,
+            "referencePriceTrusted": true,
+            "shippingCost": null,
+            "dealScore": "84.98",
+            "scoreClassification": "TOP_DEAL",
+            "scoreComponents": {
+              "discount": "35",
+              "freshness": "24.9836",
+              "availability": "20",
+              "quality": "5",
+              "shipping": "0"
+            },
+            "scoreReasons": [
+              "SHIPPING_UNKNOWN"
+            ]
+          }
+        ],
+        "pagination": {
+          "page": 1,
+          "pageSize": 2,
+          "total": 4,
+          "totalPages": 2
+        },
+        "selection": "top"
+      }
+    },
+    {
+      "request": "GET /api/v1/deals?merchantId=e274f2d7-dc1e-4723-9b2c-a6c157b98c36&view=low_price&currency=USD&maxPrice=20",
+      "status": 200,
+      "response": {
+        "data": [
+          {
+            "id": "a04bbfed-3492-470f-8294-0aa4405ad6ad",
+            "product": {
+              "id": "0ad6a126-8049-4136-a3c3-4f05ffe5714d",
+              "name": "SYNTHETIC Worker DEMO Product 5",
+              "description": "Generated test fixture. Not a commercial offer.",
+              "categoryId": null,
+              "imageUrl": null,
+              "isSynthetic": true,
+              "createdAt": "2026-11-18T10:32:46.839Z",
+              "updatedAt": "2026-11-18T10:37:06.544Z"
+            },
+            "merchant": {
+              "id": "e274f2d7-dc1e-4723-9b2c-a6c157b98c36",
+              "name": "SYNTHETIC Worker DEMO Store",
+              "sourceType": "SYNTHETIC",
+              "websiteUrl": "https://worker.example.invalid",
+              "enabled": true,
+              "isSynthetic": true
+            },
+            "externalProductId": "worker-demo-5",
+            "variantKey": null,
+            "currentPrice": "1.234567",
+            "referencePrice": "2.469134",
+            "discountPercentage": "50",
+            "currency": "USD",
+            "market": "US",
+            "productUrl": "https://worker.example.invalid/products/5",
+            "affiliateUrl": null,
+            "availability": "AVAILABLE",
+            "lastUpdatedAt": "2026-11-18T10:37:06.522Z",
+            "expiresAt": "2026-11-19T10:37:06.522Z",
+            "isSynthetic": true,
+            "isStale": false,
+            "referencePriceTrusted": true,
+            "shippingCost": null,
+            "dealScore": "84.98",
+            "scoreClassification": "TOP_DEAL",
+            "scoreComponents": {
+              "discount": "35",
+              "freshness": "24.9803",
+              "availability": "20",
+              "quality": "5",
+              "shipping": "0"
+            },
+            "scoreReasons": [
+              "SHIPPING_UNKNOWN"
+            ]
+          },
+          {
+            "id": "1246929b-4d6a-4ab8-9ee2-e64f0e029635",
+            "product": {
+              "id": "c213d7f1-336b-482f-940a-086eee9571f7",
+              "name": "SYNTHETIC Worker DEMO Product 3",
+              "description": "Generated test fixture. Not a commercial offer.",
+              "categoryId": null,
+              "imageUrl": null,
+              "isSynthetic": true,
+              "createdAt": "2026-11-18T10:32:46.797Z",
+              "updatedAt": "2026-11-18T10:37:06.493Z"
+            },
+            "merchant": {
+              "id": "e274f2d7-dc1e-4723-9b2c-a6c157b98c36",
+              "name": "SYNTHETIC Worker DEMO Store",
+              "sourceType": "SYNTHETIC",
+              "websiteUrl": "https://worker.example.invalid",
+              "enabled": true,
+              "isSynthetic": true
+            },
+            "externalProductId": "worker-demo-3",
+            "variantKey": null,
+            "currentPrice": "8.5",
+            "referencePrice": "8.5",
+            "discountPercentage": null,
+            "currency": "USD",
+            "market": "US",
+            "productUrl": "https://worker.example.invalid/products/3",
+            "affiliateUrl": null,
+            "availability": "AVAILABLE",
+            "lastUpdatedAt": "2026-11-18T10:37:06.478Z",
+            "expiresAt": "2026-11-19T10:37:06.478Z",
+            "isSynthetic": true,
+            "isStale": false,
+            "referencePriceTrusted": true,
+            "shippingCost": null,
+            "dealScore": "49.98",
+            "scoreClassification": "PRODUCT",
+            "scoreComponents": {
+              "discount": "0",
+              "freshness": "24.9791",
+              "availability": "20",
+              "quality": "5",
+              "shipping": "0"
+            },
+            "scoreReasons": [
+              "SHIPPING_UNKNOWN"
+            ]
+          },
+          {
+            "id": "8262e7e8-e590-44e9-90b2-d3ef9d143666",
+            "product": {
+              "id": "b5f3f529-0762-46de-ab6f-471aed9329af",
+              "name": "SYNTHETIC Worker DEMO Product 4",
+              "description": "Generated test fixture. Not a commercial offer.",
+              "categoryId": null,
+              "imageUrl": null,
+              "isSynthetic": true,
+              "createdAt": "2026-11-18T10:32:46.808Z",
+              "updatedAt": "2026-11-18T10:37:06.505Z"
+            },
+            "merchant": {
+              "id": "e274f2d7-dc1e-4723-9b2c-a6c157b98c36",
+              "name": "SYNTHETIC Worker DEMO Store",
+              "sourceType": "SYNTHETIC",
+              "websiteUrl": "https://worker.example.invalid",
+              "enabled": true,
+              "isSynthetic": true
+            },
+            "externalProductId": "worker-demo-4",
+            "variantKey": null,
+            "currentPrice": "20",
+            "referencePrice": "40",
+            "discountPercentage": "50",
+            "currency": "USD",
+            "market": "US",
+            "productUrl": "https://worker.example.invalid/products/4",
+            "affiliateUrl": null,
+            "availability": "AVAILABLE",
+            "lastUpdatedAt": "2026-11-18T10:37:06.478Z",
+            "expiresAt": "2026-11-19T10:37:06.478Z",
+            "isSynthetic": true,
+            "isStale": false,
+            "referencePriceTrusted": true,
+            "shippingCost": null,
+            "dealScore": "84.98",
+            "scoreClassification": "TOP_DEAL",
+            "scoreComponents": {
+              "discount": "35",
+              "freshness": "24.9791",
+              "availability": "20",
+              "quality": "5",
+              "shipping": "0"
+            },
+            "scoreReasons": [
+              "SHIPPING_UNKNOWN"
+            ]
+          },
+          {
+            "id": "850fa996-a3fe-4d3d-813e-837ac6ad6daf",
+            "product": {
+              "id": "3bc59362-0537-4bdd-b21e-24c19eb23933",
+              "name": "SYNTHETIC Worker DEMO Product 1",
+              "description": "Generated test fixture. Not a commercial offer.",
+              "categoryId": null,
+              "imageUrl": null,
+              "isSynthetic": true,
+              "createdAt": "2026-11-18T10:32:46.740Z",
+              "updatedAt": "2026-11-18T10:37:06.439Z"
+            },
+            "merchant": {
+              "id": "e274f2d7-dc1e-4723-9b2c-a6c157b98c36",
+              "name": "SYNTHETIC Worker DEMO Store",
+              "sourceType": "SYNTHETIC",
+              "websiteUrl": "https://worker.example.invalid",
+              "enabled": true,
+              "isSynthetic": true
+            },
+            "externalProductId": "worker-demo-1",
+            "variantKey": null,
+            "currentPrice": "15",
+            "referencePrice": "30",
+            "discountPercentage": "50",
+            "currency": "USD",
+            "market": "US",
+            "productUrl": "https://worker.example.invalid/products/1",
+            "affiliateUrl": null,
+            "availability": "AVAILABLE",
+            "lastUpdatedAt": "2026-11-18T10:37:06.404Z",
+            "expiresAt": "2026-11-19T10:37:06.404Z",
+            "isSynthetic": true,
+            "isStale": false,
+            "referencePriceTrusted": true,
+            "shippingCost": null,
+            "dealScore": "84.98",
+            "scoreClassification": "TOP_DEAL",
+            "scoreComponents": {
+              "discount": "35",
+              "freshness": "24.977",
+              "availability": "20",
+              "quality": "5",
+              "shipping": "0"
+            },
+            "scoreReasons": [
+              "SHIPPING_UNKNOWN"
+            ]
+          }
+        ],
+        "pagination": {
+          "page": 1,
+          "pageSize": 20,
+          "total": 4,
+          "totalPages": 1
+        },
+        "selection": "low_price"
+      }
+    },
+    {
+      "request": "GET /api/v1/deals?merchantId=e274f2d7-dc1e-4723-9b2c-a6c157b98c36&sort=newest",
+      "status": 200,
+      "response": {
+        "data": [
+          {
+            "id": "a04bbfed-3492-470f-8294-0aa4405ad6ad",
+            "product": {
+              "id": "0ad6a126-8049-4136-a3c3-4f05ffe5714d",
+              "name": "SYNTHETIC Worker DEMO Product 5",
+              "description": "Generated test fixture. Not a commercial offer.",
+              "categoryId": null,
+              "imageUrl": null,
+              "isSynthetic": true,
+              "createdAt": "2026-11-18T10:32:46.839Z",
+              "updatedAt": "2026-11-18T10:37:06.544Z"
+            },
+            "merchant": {
+              "id": "e274f2d7-dc1e-4723-9b2c-a6c157b98c36",
+              "name": "SYNTHETIC Worker DEMO Store",
+              "sourceType": "SYNTHETIC",
+              "websiteUrl": "https://worker.example.invalid",
+              "enabled": true,
+              "isSynthetic": true
+            },
+            "externalProductId": "worker-demo-5",
+            "variantKey": null,
+            "currentPrice": "1.234567",
+            "referencePrice": "2.469134",
+            "discountPercentage": "50",
+            "currency": "USD",
+            "market": "US",
+            "productUrl": "https://worker.example.invalid/products/5",
+            "affiliateUrl": null,
+            "availability": "AVAILABLE",
+            "lastUpdatedAt": "2026-11-18T10:37:06.522Z",
+            "expiresAt": "2026-11-19T10:37:06.522Z",
+            "isSynthetic": true,
+            "isStale": false,
+            "referencePriceTrusted": true,
+            "shippingCost": null,
+            "dealScore": "84.98",
+            "scoreClassification": "TOP_DEAL",
+            "scoreComponents": {
+              "discount": "35",
+              "freshness": "24.9798",
+              "availability": "20",
+              "quality": "5",
+              "shipping": "0"
+            },
+            "scoreReasons": [
+              "SHIPPING_UNKNOWN"
+            ]
+          },
+          {
+            "id": "8262e7e8-e590-44e9-90b2-d3ef9d143666",
+            "product": {
+              "id": "b5f3f529-0762-46de-ab6f-471aed9329af",
+              "name": "SYNTHETIC Worker DEMO Product 4",
+              "description": "Generated test fixture. Not a commercial offer.",
+              "categoryId": null,
+              "imageUrl": null,
+              "isSynthetic": true,
+              "createdAt": "2026-11-18T10:32:46.808Z",
+              "updatedAt": "2026-11-18T10:37:06.505Z"
+            },
+            "merchant": {
+              "id": "e274f2d7-dc1e-4723-9b2c-a6c157b98c36",
+              "name": "SYNTHETIC Worker DEMO Store",
+              "sourceType": "SYNTHETIC",
+              "websiteUrl": "https://worker.example.invalid",
+              "enabled": true,
+              "isSynthetic": true
+            },
+            "externalProductId": "worker-demo-4",
+            "variantKey": null,
+            "currentPrice": "20",
+            "referencePrice": "40",
+            "discountPercentage": "50",
+            "currency": "USD",
+            "market": "US",
+            "productUrl": "https://worker.example.invalid/products/4",
+            "affiliateUrl": null,
+            "availability": "AVAILABLE",
+            "lastUpdatedAt": "2026-11-18T10:37:06.478Z",
+            "expiresAt": "2026-11-19T10:37:06.478Z",
+            "isSynthetic": true,
+            "isStale": false,
+            "referencePriceTrusted": true,
+            "shippingCost": null,
+            "dealScore": "84.98",
+            "scoreClassification": "TOP_DEAL",
+            "scoreComponents": {
+              "discount": "35",
+              "freshness": "24.9786",
+              "availability": "20",
+              "quality": "5",
+              "shipping": "0"
+            },
+            "scoreReasons": [
+              "SHIPPING_UNKNOWN"
+            ]
+          },
+          {
+            "id": "20743bdc-d797-4be3-8f75-5fa9ff428d59",
+            "product": {
+              "id": "6840fe65-25b5-4069-9f69-9cb93cf42321",
+              "name": "SYNTHETIC Worker DEMO Product 2",
+              "description": "Generated test fixture. Not a commercial offer.",
+              "categoryId": null,
+              "imageUrl": null,
+              "isSynthetic": true,
+              "createdAt": "2026-11-18T10:32:46.759Z",
+              "updatedAt": "2026-11-18T10:37:06.455Z"
+            },
+            "merchant": {
+              "id": "e274f2d7-dc1e-4723-9b2c-a6c157b98c36",
+              "name": "SYNTHETIC Worker DEMO Store",
+              "sourceType": "SYNTHETIC",
+              "websiteUrl": "https://worker.example.invalid",
+              "enabled": true,
+              "isSynthetic": true
+            },
+            "externalProductId": "worker-demo-2",
+            "variantKey": null,
+            "currentPrice": "99.99",
+            "referencePrice": "199.98",
+            "discountPercentage": "50",
+            "currency": "USD",
+            "market": "US",
+            "productUrl": "https://worker.example.invalid/products/2",
+            "affiliateUrl": null,
+            "availability": "AVAILABLE",
+            "lastUpdatedAt": "2026-11-18T10:37:06.404Z",
+            "expiresAt": "2026-11-19T10:37:06.404Z",
+            "isSynthetic": true,
+            "isStale": false,
+            "referencePriceTrusted": true,
+            "shippingCost": null,
+            "dealScore": "84.98",
+            "scoreClassification": "TOP_DEAL",
+            "scoreComponents": {
+              "discount": "35",
+              "freshness": "24.9765",
+              "availability": "20",
+              "quality": "5",
+              "shipping": "0"
+            },
+            "scoreReasons": [
+              "SHIPPING_UNKNOWN"
+            ]
+          },
+          {
+            "id": "850fa996-a3fe-4d3d-813e-837ac6ad6daf",
+            "product": {
+              "id": "3bc59362-0537-4bdd-b21e-24c19eb23933",
+              "name": "SYNTHETIC Worker DEMO Product 1",
+              "description": "Generated test fixture. Not a commercial offer.",
+              "categoryId": null,
+              "imageUrl": null,
+              "isSynthetic": true,
+              "createdAt": "2026-11-18T10:32:46.740Z",
+              "updatedAt": "2026-11-18T10:37:06.439Z"
+            },
+            "merchant": {
+              "id": "e274f2d7-dc1e-4723-9b2c-a6c157b98c36",
+              "name": "SYNTHETIC Worker DEMO Store",
+              "sourceType": "SYNTHETIC",
+              "websiteUrl": "https://worker.example.invalid",
+              "enabled": true,
+              "isSynthetic": true
+            },
+            "externalProductId": "worker-demo-1",
+            "variantKey": null,
+            "currentPrice": "15",
+            "referencePrice": "30",
+            "discountPercentage": "50",
+            "currency": "USD",
+            "market": "US",
+            "productUrl": "https://worker.example.invalid/products/1",
+            "affiliateUrl": null,
+            "availability": "AVAILABLE",
+            "lastUpdatedAt": "2026-11-18T10:37:06.404Z",
+            "expiresAt": "2026-11-19T10:37:06.404Z",
+            "isSynthetic": true,
+            "isStale": false,
+            "referencePriceTrusted": true,
+            "shippingCost": null,
+            "dealScore": "84.98",
+            "scoreClassification": "TOP_DEAL",
+            "scoreComponents": {
+              "discount": "35",
+              "freshness": "24.9765",
+              "availability": "20",
+              "quality": "5",
+              "shipping": "0"
+            },
+            "scoreReasons": [
+              "SHIPPING_UNKNOWN"
+            ]
+          }
+        ],
+        "pagination": {
+          "page": 1,
+          "pageSize": 20,
+          "total": 4,
+          "totalPages": 1
+        },
+        "selection": "discounted"
+      }
+    },
+    {
+      "request": "GET /api/v1/deals?merchantId=e274f2d7-dc1e-4723-9b2c-a6c157b98c36&sort=discount_desc",
+      "status": 200,
+      "response": {
+        "data": [
+          {
+            "id": "20743bdc-d797-4be3-8f75-5fa9ff428d59",
+            "product": {
+              "id": "6840fe65-25b5-4069-9f69-9cb93cf42321",
+              "name": "SYNTHETIC Worker DEMO Product 2",
+              "description": "Generated test fixture. Not a commercial offer.",
+              "categoryId": null,
+              "imageUrl": null,
+              "isSynthetic": true,
+              "createdAt": "2026-11-18T10:32:46.759Z",
+              "updatedAt": "2026-11-18T10:37:06.455Z"
+            },
+            "merchant": {
+              "id": "e274f2d7-dc1e-4723-9b2c-a6c157b98c36",
+              "name": "SYNTHETIC Worker DEMO Store",
+              "sourceType": "SYNTHETIC",
+              "websiteUrl": "https://worker.example.invalid",
+              "enabled": true,
+              "isSynthetic": true
+            },
+            "externalProductId": "worker-demo-2",
+            "variantKey": null,
+            "currentPrice": "99.99",
+            "referencePrice": "199.98",
+            "discountPercentage": "50",
+            "currency": "USD",
+            "market": "US",
+            "productUrl": "https://worker.example.invalid/products/2",
+            "affiliateUrl": null,
+            "availability": "AVAILABLE",
+            "lastUpdatedAt": "2026-11-18T10:37:06.404Z",
+            "expiresAt": "2026-11-19T10:37:06.404Z",
+            "isSynthetic": true,
+            "isStale": false,
+            "referencePriceTrusted": true,
+            "shippingCost": null,
+            "dealScore": "84.98",
+            "scoreClassification": "TOP_DEAL",
+            "scoreComponents": {
+              "discount": "35",
+              "freshness": "24.976",
+              "availability": "20",
+              "quality": "5",
+              "shipping": "0"
+            },
+            "scoreReasons": [
+              "SHIPPING_UNKNOWN"
+            ]
+          },
+          {
+            "id": "8262e7e8-e590-44e9-90b2-d3ef9d143666",
+            "product": {
+              "id": "b5f3f529-0762-46de-ab6f-471aed9329af",
+              "name": "SYNTHETIC Worker DEMO Product 4",
+              "description": "Generated test fixture. Not a commercial offer.",
+              "categoryId": null,
+              "imageUrl": null,
+              "isSynthetic": true,
+              "createdAt": "2026-11-18T10:32:46.808Z",
+              "updatedAt": "2026-11-18T10:37:06.505Z"
+            },
+            "merchant": {
+              "id": "e274f2d7-dc1e-4723-9b2c-a6c157b98c36",
+              "name": "SYNTHETIC Worker DEMO Store",
+              "sourceType": "SYNTHETIC",
+              "websiteUrl": "https://worker.example.invalid",
+              "enabled": true,
+              "isSynthetic": true
+            },
+            "externalProductId": "worker-demo-4",
+            "variantKey": null,
+            "currentPrice": "20",
+            "referencePrice": "40",
+            "discountPercentage": "50",
+            "currency": "USD",
+            "market": "US",
+            "productUrl": "https://worker.example.invalid/products/4",
+            "affiliateUrl": null,
+            "availability": "AVAILABLE",
+            "lastUpdatedAt": "2026-11-18T10:37:06.478Z",
+            "expiresAt": "2026-11-19T10:37:06.478Z",
+            "isSynthetic": true,
+            "isStale": false,
+            "referencePriceTrusted": true,
+            "shippingCost": null,
+            "dealScore": "84.98",
+            "scoreClassification": "TOP_DEAL",
+            "scoreComponents": {
+              "discount": "35",
+              "freshness": "24.978",
+              "availability": "20",
+              "quality": "5",
+              "shipping": "0"
+            },
+            "scoreReasons": [
+              "SHIPPING_UNKNOWN"
+            ]
+          },
+          {
+            "id": "850fa996-a3fe-4d3d-813e-837ac6ad6daf",
+            "product": {
+              "id": "3bc59362-0537-4bdd-b21e-24c19eb23933",
+              "name": "SYNTHETIC Worker DEMO Product 1",
+              "description": "Generated test fixture. Not a commercial offer.",
+              "categoryId": null,
+              "imageUrl": null,
+              "isSynthetic": true,
+              "createdAt": "2026-11-18T10:32:46.740Z",
+              "updatedAt": "2026-11-18T10:37:06.439Z"
+            },
+            "merchant": {
+              "id": "e274f2d7-dc1e-4723-9b2c-a6c157b98c36",
+              "name": "SYNTHETIC Worker DEMO Store",
+              "sourceType": "SYNTHETIC",
+              "websiteUrl": "https://worker.example.invalid",
+              "enabled": true,
+              "isSynthetic": true
+            },
+            "externalProductId": "worker-demo-1",
+            "variantKey": null,
+            "currentPrice": "15",
+            "referencePrice": "30",
+            "discountPercentage": "50",
+            "currency": "USD",
+            "market": "US",
+            "productUrl": "https://worker.example.invalid/products/1",
+            "affiliateUrl": null,
+            "availability": "AVAILABLE",
+            "lastUpdatedAt": "2026-11-18T10:37:06.404Z",
+            "expiresAt": "2026-11-19T10:37:06.404Z",
+            "isSynthetic": true,
+            "isStale": false,
+            "referencePriceTrusted": true,
+            "shippingCost": null,
+            "dealScore": "84.98",
+            "scoreClassification": "TOP_DEAL",
+            "scoreComponents": {
+              "discount": "35",
+              "freshness": "24.976",
+              "availability": "20",
+              "quality": "5",
+              "shipping": "0"
+            },
+            "scoreReasons": [
+              "SHIPPING_UNKNOWN"
+            ]
+          },
+          {
+            "id": "a04bbfed-3492-470f-8294-0aa4405ad6ad",
+            "product": {
+              "id": "0ad6a126-8049-4136-a3c3-4f05ffe5714d",
+              "name": "SYNTHETIC Worker DEMO Product 5",
+              "description": "Generated test fixture. Not a commercial offer.",
+              "categoryId": null,
+              "imageUrl": null,
+              "isSynthetic": true,
+              "createdAt": "2026-11-18T10:32:46.839Z",
+              "updatedAt": "2026-11-18T10:37:06.544Z"
+            },
+            "merchant": {
+              "id": "e274f2d7-dc1e-4723-9b2c-a6c157b98c36",
+              "name": "SYNTHETIC Worker DEMO Store",
+              "sourceType": "SYNTHETIC",
+              "websiteUrl": "https://worker.example.invalid",
+              "enabled": true,
+              "isSynthetic": true
+            },
+            "externalProductId": "worker-demo-5",
+            "variantKey": null,
+            "currentPrice": "1.234567",
+            "referencePrice": "2.469134",
+            "discountPercentage": "50",
+            "currency": "USD",
+            "market": "US",
+            "productUrl": "https://worker.example.invalid/products/5",
+            "affiliateUrl": null,
+            "availability": "AVAILABLE",
+            "lastUpdatedAt": "2026-11-18T10:37:06.522Z",
+            "expiresAt": "2026-11-19T10:37:06.522Z",
+            "isSynthetic": true,
+            "isStale": false,
+            "referencePriceTrusted": true,
+            "shippingCost": null,
+            "dealScore": "84.98",
+            "scoreClassification": "TOP_DEAL",
+            "scoreComponents": {
+              "discount": "35",
+              "freshness": "24.9793",
+              "availability": "20",
+              "quality": "5",
+              "shipping": "0"
+            },
+            "scoreReasons": [
+              "SHIPPING_UNKNOWN"
+            ]
+          }
+        ],
+        "pagination": {
+          "page": 1,
+          "pageSize": 20,
+          "total": 4,
+          "totalPages": 1
+        },
+        "selection": "discounted"
+      }
+    }
+  ]
+}

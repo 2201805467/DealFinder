@@ -3,13 +3,18 @@ import { parseEnvironment } from './config/env.js';
 import { logger } from './utils/logger.js';
 import { createDatabaseClient } from './database/client.js';
 import { CatalogService } from './services/catalog.js';
+import { parseScoringRules } from './scoring/deal-scoring.js';
 
 try {
   const config = parseEnvironment(process.env);
   const database = createDatabaseClient(config.DATABASE_URL);
   const server = createApp(
     config,
-    new CatalogService(database, config.NODE_ENV !== 'production'),
+    new CatalogService(
+      database,
+      config.NODE_ENV !== 'production',
+      parseScoringRules(process.env.DEAL_SCORING_RULES),
+    ),
   ).listen(config.PORT, config.HOST, () => {
     logger.info('Backend listening', { host: config.HOST, port: config.PORT });
   });

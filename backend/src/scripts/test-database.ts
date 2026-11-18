@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { config } from 'dotenv';
 import { spawnSync } from 'node:child_process';
+import { readdirSync } from 'node:fs';
 import { assertTestDatabase } from '../database/development-guard.js';
 
 config({ path: '.env.test', quiet: true });
@@ -18,7 +19,16 @@ try {
   // Run local CLI entry points directly, with no shell interpolation or resets.
   for (const args of [
     ['node_modules/prisma/build/index.js', 'migrate', 'deploy'],
-    ['--import', 'tsx', '--test', 'tests/integration/catalog.test.ts'],
+    [
+      '--import',
+      'tsx',
+      '--test',
+      '--test-concurrency=1',
+      ...readdirSync('tests/integration')
+        .filter((file) => file.endsWith('.test.ts'))
+        .sort()
+        .map((file) => `tests/integration/${file}`),
+    ],
   ]) {
     const result = spawnSync(process.execPath, args, { env, stdio: 'inherit' });
     if (result.status !== 0) {

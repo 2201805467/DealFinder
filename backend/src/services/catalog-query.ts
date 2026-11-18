@@ -23,8 +23,15 @@ const schema = z
     minPrice: amount,
     maxPrice: amount,
     sort: z
-      .enum(['price_asc', 'price_desc', 'discount_desc', 'newest'])
+      .enum([
+        'price_asc',
+        'price_desc',
+        'discount_desc',
+        'newest',
+        'score_desc',
+      ])
       .default('newest'),
+    view: z.enum(['discounted', 'top', 'low_price']).optional(),
   })
   .strict();
 export type CatalogQuery = z.infer<typeof schema>;
@@ -37,6 +44,21 @@ export function parseCatalogQuery(input: unknown): CatalogQuery {
       'Invalid pagination, filters or sort.',
     );
   const result = parsed.data;
+  if (
+    result.view === 'low_price' &&
+    (!result.currency || result.maxPrice === undefined)
+  ) {
+    throw new AppError(
+      400,
+      'LOW_PRICE_THRESHOLD_REQUIRED',
+      'Low-price selection requires currency and an explicit maxPrice.',
+    );
+  }
+  if (
+    result.view === 'top' &&
+    !(typeof input === 'object' && input !== null && 'sort' in input)
+  )
+    result.sort = 'score_desc';
   if (
     (result.minPrice !== undefined ||
       result.maxPrice !== undefined ||

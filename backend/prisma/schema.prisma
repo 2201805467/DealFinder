@@ -25,6 +25,8 @@ enum SyncStatus {
   RUNNING
   SUCCEEDED
   FAILED
+  PARTIAL
+  CANCELLED
 }
 
 model Merchant {
@@ -38,11 +40,16 @@ model Merchant {
   retentionSeconds         Int?       @map("retention_seconds")
   allowIndefiniteRetention Boolean    @default(false) @map("allow_indefinite_retention")
   isSynthetic              Boolean    @default(false) @map("is_synthetic")
+  syncEnabled              Boolean    @default(false) @map("sync_enabled")
+  syncIntervalSeconds      Int        @default(3600) @map("sync_interval_seconds")
+  staleAfterSeconds        Int        @default(7200) @map("stale_after_seconds")
+  nextSyncAt               DateTime?  @map("next_sync_at") @db.Timestamptz(3)
   offers                   Offer[]
   syncRuns                 SyncRun[]
   contentProducts          Product[]  @relation("ProductContent")
 
   @@index([sourceType, enabled])
+  @@index([syncEnabled, nextSyncAt])
   @@map("merchants")
 }
 
@@ -83,24 +90,27 @@ model Product {
 }
 
 model Offer {
-  id                 String       @id @default(uuid()) @db.Uuid
-  productId          String       @map("product_id") @db.Uuid
-  merchantId         String       @map("merchant_id") @db.Uuid
-  externalProductId  String       @map("external_product_id")
-  variantKey         String       @default("") @map("variant_key")
-  market             String       @default("")
-  currency           String       @default("") @db.VarChar(3)
-  currentPrice       Decimal?     @map("current_price") @db.Decimal(24, 6)
-  referencePrice     Decimal?     @map("reference_price") @db.Decimal(24, 6)
-  discountPercentage Decimal?     @map("discount_percentage") @db.Decimal(7, 4)
-  productUrl         String?      @map("product_url")
-  affiliateUrl       String?      @map("affiliate_url")
-  availability       Availability @default(UNKNOWN)
-  isSynthetic        Boolean      @default(false) @map("is_synthetic")
-  lastUpdatedAt      DateTime     @map("last_updated_at") @db.Timestamptz(3)
-  expiresAt          DateTime?    @map("expires_at") @db.Timestamptz(3)
-  product            Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
-  merchant           Merchant     @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  id                    String       @id @default(uuid()) @db.Uuid
+  productId             String       @map("product_id") @db.Uuid
+  merchantId            String       @map("merchant_id") @db.Uuid
+  externalProductId     String       @map("external_product_id")
+  variantKey            String       @default("") @map("variant_key")
+  market                String       @default("")
+  currency              String       @default("") @db.VarChar(3)
+  currentPrice          Decimal?     @map("current_price") @db.Decimal(24, 6)
+  referencePrice        Decimal?     @map("reference_price") @db.Decimal(24, 6)
+  discountPercentage    Decimal?     @map("discount_percentage") @db.Decimal(7, 4)
+  productUrl            String?      @map("product_url")
+  affiliateUrl          String?      @map("affiliate_url")
+  availability          Availability @default(UNKNOWN)
+  isSynthetic           Boolean      @default(false) @map("is_synthetic")
+  referencePriceTrusted Boolean      @default(false) @map("reference_price_trusted")
+  shippingCost          Decimal?     @map("shipping_cost") @db.Decimal(24, 6)
+  staleAt               DateTime?    @map("stale_at") @db.Timestamptz(3)
+  lastUpdatedAt         DateTime     @map("last_updated_at") @db.Timestamptz(3)
+  expiresAt             DateTime?    @map("expires_at") @db.Timestamptz(3)
+  product               Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  merchant              Merchant     @relation(fields: [merchantId], references: [id], onDelete: Restrict)
 
   @@unique([merchantId, externalProductId, market, variantKey, currency], name: "sourceIdentity")
   @@index([productId])
@@ -108,6 +118,7 @@ model Offer {
   @@index([market, merchantId])
   @@index([discountPercentage, lastUpdatedAt])
   @@index([lastUpdatedAt])
+  @@index([staleAt])
   @@index([expiresAt])
   @@map("offers")
 }
@@ -122,6 +133,11 @@ model SyncRun {
   status         SyncStatus @default(RUNNING)
   errorCode      String?    @map("error_code")
   errorDetails   String?    @map("error_details")
+  scope          String     @default("BATCH")
+  pageCount      Int        @default(0) @map("page_count")
+  requestCount   Int        @default(0) @map("request_count")
+  skippedCount   Int        @default(0) @map("skipped_count")
+  durationMs     Int?       @map("duration_ms")
   merchant       Merchant   @relation(fields: [merchantId], references: [id], onDelete: Restrict)
 
   @@index([merchantId, startedAt])
