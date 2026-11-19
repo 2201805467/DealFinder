@@ -1,7 +1,10 @@
 import { setTimeout as sleep } from 'node:timers/promises';
 import type { PrismaClient } from '../generated/prisma/client.js';
 import type { WorkerOptions } from '../config/worker.js';
-import { assertDemoWorkerEnabled } from '../config/worker.js';
+import {
+  assertDemoWorkerEnabled,
+  assertRealWorkerEnabled,
+} from '../config/worker.js';
 import {
   ProductSynchronizationService,
   type SyncResult,
@@ -16,6 +19,7 @@ export class BackgroundWorker {
     private readonly synchronization: ProductSynchronizationService,
     private readonly options: WorkerOptions,
     private readonly environment: string,
+    private readonly mode: 'demo' | 'real' = 'demo',
   ) {}
 
   async tick(
@@ -23,14 +27,28 @@ export class BackgroundWorker {
     force = false,
     performCleanup = true,
   ): Promise<SyncResult[]> {
-    assertDemoWorkerEnabled(this.environment, this.options);
+    this.assertEnabled();
     const merchants = await this.db.merchant.findMany({
       where: {
         enabled: true,
         syncEnabled: true,
         storageAuthorized: true,
-        isSynthetic: true,
-        sourceType: 'SYNTHETIC',
+        ...(this.mode === 'demo'
+          ? { isSynthetic: true, sourceType: 'SYNTHETIC' as const }
+          : {
+              isSynthetic: false,
+              isDataSource: true,
+              sourceType: {
+                in: [
+                  ...(this.options.gamerPowerEnabled
+                    ? ['GAMERPOWER' as const]
+                    : []),
+                  ...(force && this.options.cheapSharkEnabled
+                    ? ['CHEAPSHARK' as const]
+                    : []),
+                ],
+              },
+            }),
       },
       orderBy: { id: 'asc' },
     });
@@ -50,6 +68,12 @@ export class BackgroundWorker {
     }
     if (performCleanup) await this.cleanup(signal);
     return results;
+  }
+
+  private assertEnabled() {
+    if (this.mode === 'real')
+      assertRealWorkerEnabled(this.environment, this.options);
+    else assertDemoWorkerEnabled(this.environment, this.options);
   }
 
   private async cleanup(signal: AbortSignal) {
@@ -83,7 +107,7 @@ export class BackgroundWorker {
   }
 
   async start(signal: AbortSignal) {
-    assertDemoWorkerEnabled(this.environment, this.options);
+    this.assertEnabled();
     const pause = async (ms: number) => {
       try {
         await sleep(ms, undefined, { signal });

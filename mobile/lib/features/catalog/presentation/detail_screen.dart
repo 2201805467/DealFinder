@@ -14,6 +14,8 @@ final openLinkProvider = Provider<Future<bool> Function(Uri)>(
 );
 Uri? shoppingLink(Offer offer) => offer.synthetic || !offer.valid
     ? null
+    : offer.sourceKey == 'CHEAPSHARK'
+    ? safeExternalUri(offer.productUrl)
     : safeExternalUri(offer.affiliateUrl) ?? safeExternalUri(offer.productUrl);
 String plainDescription(String value) => value
     .replaceAll(RegExp(r'<[^>]*>'), ' ')
@@ -95,6 +97,39 @@ class DetailScreen extends ConsumerWidget {
                               ),
                               const SizedBox(height: 16),
                               PriceLabel(offer, large: true),
+                              if (offer.sourceName != null)
+                                SourceAttribution(offer),
+                              if (offer.platforms.isNotEmpty)
+                                Text(
+                                  'Platforms: ${offer.platforms.join(', ')}',
+                                ),
+                              if (offer.kind != null)
+                                Text(
+                                  'Offer type: ${offer.kind == 'loot'
+                                      ? 'Digital loot / content (not necessarily a full game)'
+                                      : offer.kind == 'dlc'
+                                      ? 'DLC / additional content (not a full game)'
+                                      : offer.kind == 'beta'
+                                      ? 'Early access / beta'
+                                      : offer.kind == 'game'
+                                      ? 'Game'
+                                      : 'Giveaway (type unspecified)'}',
+                                ),
+                              if (offer.endText != null)
+                                Text(
+                                  'Source end time: ${offer.endText} (source timezone not supplied; availability may end earlier)',
+                                ),
+                              if (offer.market == null && !offer.synthetic)
+                                const Padding(
+                                  padding: EdgeInsets.only(top: 8),
+                                  child: Text(
+                                    'Country availability is unknown. Check region, platform and eligibility on the official offer page.',
+                                  ),
+                                ),
+                              if (offer.sourceKey == 'GAMERPOWER')
+                                const Text(
+                                  'Free giveaway. Any estimated worth is not a verified previous selling price.',
+                                ),
                               const SizedBox(height: 16),
                               if (!offer.valid)
                                 const Card(
@@ -248,7 +283,7 @@ class DetailScreen extends ConsumerWidget {
                               Text(
                                 offer.synthetic
                                     ? 'Demo product. No purchase is available.'
-                                    : 'Purchases happen at the original store. Eligible links may earn us a commission.',
+                                    : 'Check the official offer page for availability and redemption terms.',
                                 textAlign: TextAlign.center,
                                 style: Theme.of(context).textTheme.bodySmall,
                               ),

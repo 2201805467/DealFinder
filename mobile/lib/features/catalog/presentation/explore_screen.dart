@@ -191,7 +191,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                                   .floor()
                                   .clamp(1, 4),
                           mainAxisExtent:
-                              350 +
+                              420 +
                               (MediaQuery.textScalerOf(context).scale(14) / 14 -
                                           1)
                                       .clamp(0, 3) *

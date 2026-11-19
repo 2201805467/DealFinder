@@ -3,6 +3,7 @@ import { Prisma, type PrismaClient } from '../generated/prisma/client.js';
 import type { StoreProduct } from '../providers/store-provider.js';
 import { AppError } from '../utils/app-error.js';
 import { calculatedDiscount, exactMoney } from './money.js';
+import { sourceMetadataSchema } from '../providers/source-metadata.js';
 
 const httpUrl = z
   .url()
@@ -41,6 +42,7 @@ const inputSchema = z.object({
   originalPrice: z.number().finite().nonnegative().optional(),
   priceRestricted: z.boolean().optional(),
   discountPercentage: z.number().optional(),
+  source: sourceMetadataSchema.optional(),
 });
 export interface IngestionItem {
   product: StoreProduct;
@@ -217,6 +219,8 @@ export class OfferIngestionService {
               run.authorizationReference ||
             currentPolicy.isSynthetic !== run.isSynthetic ||
             currentPolicy.sourceType !== run.sourceType ||
+            currentPolicy.isDataSource !== run.isDataSource ||
+            currentPolicy.dataSourceId !== run.dataSourceId ||
             currentPolicy.staleAfterSeconds !== run.staleAfterSeconds ||
             (context && !currentPolicy.syncEnabled)
           ) {
@@ -231,29 +235,94 @@ export class OfferIngestionService {
             context?.signal?.throwIfAborted();
             const { product, options, current, reference, date, shippingCost } =
               entry;
-            if (product.store !== run.name)
+            const source = product.source;
+            if (
+              source &&
+              (!run.isDataSource ||
+                run.isSynthetic ||
+                source.key !== run.sourceType ||
+                options.affiliateUrl ||
+                options.productId)
+            )
+              throw new AppError(
+                400,
+                'SOURCE_MISMATCH',
+                'Aggregator metadata requires a reviewed source and official links.',
+              );
+            if (run.isDataSource && !source)
+              throw new AppError(
+                400,
+                'SOURCE_MISMATCH',
+                'Aggregator attribution is required.',
+              );
+            if (!source && product.store !== run.name)
               throw new AppError(
                 400,
                 'SOURCE_MISMATCH',
                 'Product store must match the registered merchant.',
               );
-            const expiresAt =
+            let expiresAt =
               run.retentionSeconds === null
                 ? null
                 : new Date(date.getTime() + run.retentionSeconds * 1000);
+            if (
+              source?.endsAt &&
+              (!expiresAt || new Date(source.endsAt) < expiresAt)
+            )
+              expiresAt = new Date(source.endsAt);
             if (expiresAt && expiresAt <= new Date())
               throw new AppError(
                 400,
                 'EXPIRED_INPUT',
                 'Source content has already expired.',
               );
+            const retailer = source
+              ? await tx.merchant.upsert({
+                  where: {
+                    dataSourceId_externalStoreId: {
+                      dataSourceId: merchantId,
+                      externalStoreId: source.retailerId,
+                    },
+                  },
+                  create: {
+                    name: product.store,
+                    sourceType: run.sourceType,
+                    dataSourceId: merchantId,
+                    externalStoreId: source.retailerId,
+                    websiteUrl: null,
+                    enabled: true,
+                    storageAuthorized: true,
+                    authorizationReference: run.authorizationReference,
+                    retentionSeconds: run.retentionSeconds,
+                    staleAfterSeconds: run.staleAfterSeconds,
+                  },
+                  update: { name: product.store },
+                })
+              : undefined;
+            if (
+              retailer &&
+              (!retailer.enabled ||
+                !retailer.storageAuthorized ||
+                retailer.isSynthetic ||
+                retailer.isDataSource ||
+                retailer.sourceType !== run.sourceType)
+            )
+              throw new AppError(
+                403,
+                'STORAGE_NOT_AUTHORIZED',
+                'Retailer permission has been revoked.',
+              );
             const identity = {
-              merchantId,
+              merchantId: retailer?.id ?? merchantId,
               externalProductId: product.externalId,
               market: product.market ?? '',
               variantKey: options.variantKey ?? '',
               currency: product.currency ?? '',
             };
+            // Same source + official game ID is evidence of identity across its retailers.
+            // Names and identifiers from different sources never trigger a merge.
+            if (source?.key === 'CHEAPSHARK')
+              await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${'source-game:' + merchantId + ':' + product.externalId}, 0))`;
             await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${JSON.stringify(identity)}, 0))`;
             const existing = await tx.offer.findUnique({
               where: { sourceIdentity: identity },
@@ -273,6 +342,17 @@ export class OfferIngestionService {
                 'An existing source offer cannot be silently reassigned.',
               );
             let target = options.productId ?? existing?.productId;
+            if (!target && source?.key === 'CHEAPSHARK')
+              target = (
+                await tx.product.findFirst({
+                  where: {
+                    contentMerchantId: merchantId,
+                    contentExternalId: product.externalId,
+                    isSynthetic: false,
+                  },
+                  orderBy: { createdAt: 'asc' },
+                })
+              )?.id;
             if (target) {
               const linked = await tx.product.findUnique({
                 where: { id: target },
@@ -318,7 +398,9 @@ export class OfferIngestionService {
             }
             // Synthetic references are controlled test fixtures, not commercial evidence.
             const referencePriceTrusted =
-              options.referencePriceTrusted ?? run.isSynthetic;
+              source?.referencePriceTrusted ??
+              options.referencePriceTrusted ??
+              run.isSynthetic;
             const data = {
               currentPrice: current,
               referencePrice: reference,
@@ -330,6 +412,7 @@ export class OfferIngestionService {
               staleAt: new Date(date.getTime() + run.staleAfterSeconds * 1000),
               productUrl: product.productUrl ?? null,
               affiliateUrl: options.affiliateUrl ?? null,
+              sourceMetadata: source ? { ...source } : Prisma.DbNull,
               availability:
                 product.availability === 'available'
                   ? ('AVAILABLE' as const)

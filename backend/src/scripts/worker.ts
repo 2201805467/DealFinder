@@ -4,19 +4,24 @@ import { createDatabaseClient } from '../database/client.js';
 import {
   assertDemoWorkerEnabled,
   parseWorkerEnvironment,
+  assertRealWorkerEnabled,
 } from '../config/worker.js';
-import { demoRegistry } from '../services/provider-registry.js';
+import { demoRegistry, realRegistry } from '../services/provider-registry.js';
 import { ProductSynchronizationService } from '../services/product-synchronization.js';
 import { BackgroundWorker } from '../jobs/background-worker.js';
 import { logger } from '../utils/logger.js';
 
 try {
   const { values } = parseArgs({
-    options: { once: { type: 'boolean', default: false } },
+    options: {
+      once: { type: 'boolean', default: false },
+      real: { type: 'boolean', default: false },
+    },
   });
   const options = parseWorkerEnvironment(process.env);
   const environment = process.env.NODE_ENV ?? '';
-  assertDemoWorkerEnabled(environment, options);
+  if (values.real) assertRealWorkerEnabled(environment, options);
+  else assertDemoWorkerEnabled(environment, options);
   const db = createDatabaseClient(process.env.DATABASE_URL ?? '');
   const controller = new AbortController();
   const stop = () => {
@@ -28,12 +33,23 @@ try {
   try {
     const service = new ProductSynchronizationService(
       db,
-      demoRegistry(),
+      values.real ? realRegistry() : demoRegistry(),
       options,
       environment,
     );
-    const worker = new BackgroundWorker(db, service, options, environment);
-    logger.info('SYNTHETIC demo worker starting', { once: values.once });
+    const worker = new BackgroundWorker(
+      db,
+      service,
+      options,
+      environment,
+      values.real ? 'real' : 'demo',
+    );
+    logger.info(
+      values.real
+        ? 'Reviewed real-data worker starting'
+        : 'SYNTHETIC demo worker starting',
+      { once: values.once },
+    );
     if (values.once) {
       const results = await worker.tick(controller.signal, true);
       if (

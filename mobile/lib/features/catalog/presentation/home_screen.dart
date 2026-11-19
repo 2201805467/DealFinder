@@ -36,7 +36,7 @@ class HomeScreen extends ConsumerWidget {
       (
         'Biggest Discounts',
         'Savings with a trusted reference',
-        base.copyWith(sort: 'discount_desc'),
+        base.copyWith(sort: 'discount_desc', view: 'discounted'),
       ),
     ];
     return RefreshIndicator(
@@ -248,7 +248,7 @@ class HomeSection extends ConsumerWidget {
                     )
                   : SizedBox(
                       height:
-                          350 +
+                          420 +
                           (MediaQuery.textScalerOf(context).scale(14) / 14 - 1)
                                   .clamp(0, 3) *
                               220,

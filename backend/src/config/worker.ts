@@ -6,6 +6,8 @@ const integer = (min: number, max: number, fallback: number) =>
 const schema = z.object({
   WORKER_ENABLED: z.enum(['true', 'false']).default('false'),
   WORKER_ALLOW_SYNTHETIC: z.enum(['true', 'false']).default('false'),
+  CHEAPSHARK_ENABLED: z.enum(['true', 'false']).default('false'),
+  GAMERPOWER_ENABLED: z.enum(['true', 'false']).default('false'),
   WORKER_POLL_MS: integer(100, 60000, 5000),
   WORKER_CLEANUP_MS: integer(1000, 86400000, 60000),
   WORKER_REQUEST_TIMEOUT_MS: integer(50, 60000, 10000),
@@ -28,6 +30,8 @@ export function parseWorkerEnvironment(input: NodeJS.ProcessEnv) {
   return {
     enabled: v.WORKER_ENABLED === 'true',
     allowSynthetic: v.WORKER_ALLOW_SYNTHETIC === 'true',
+    cheapSharkEnabled: v.CHEAPSHARK_ENABLED === 'true',
+    gamerPowerEnabled: v.GAMERPOWER_ENABLED === 'true',
     pollMs: v.WORKER_POLL_MS,
     cleanupMs: v.WORKER_CLEANUP_MS,
     requestTimeoutMs: v.WORKER_REQUEST_TIMEOUT_MS,
@@ -42,6 +46,20 @@ export function parseWorkerEnvironment(input: NodeJS.ProcessEnv) {
   };
 }
 export type WorkerOptions = ReturnType<typeof parseWorkerEnvironment>;
+export function assertRealWorkerEnabled(
+  environment: string,
+  options: WorkerOptions,
+) {
+  if (
+    !['development', 'test', 'production'].includes(environment) ||
+    !options.enabled ||
+    options.allowSynthetic ||
+    (!options.cheapSharkEnabled && !options.gamerPowerEnabled)
+  )
+    throw new Error(
+      'Real worker requires explicit source opt-in and synthetic data disabled.',
+    );
+}
 export function assertDemoWorkerEnabled(
   environment: string | undefined,
   options: WorkerOptions,

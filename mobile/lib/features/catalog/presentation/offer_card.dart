@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/config.dart';
 import '../../../core/retention.dart';
 import '../../../core/widgets.dart';
@@ -91,7 +92,9 @@ class PriceLabel extends StatelessWidget {
   final Offer offer;
   final bool large;
   Widget currentText(BuildContext context) => Text(
-    offer.current?.format(offer.currency) ?? 'Price unavailable',
+    offer.free
+        ? 'Free'
+        : offer.current?.format(offer.currency) ?? 'Price unavailable',
     style:
         (large
                 ? Theme.of(context).textTheme.headlineMedium
@@ -207,6 +210,14 @@ class OfferCard extends ConsumerWidget {
                       ),
                       const SizedBox(height: 10),
                       PriceLabel(offer),
+                      if (offer.sourceName != null) SourceAttribution(offer),
+                      if (offer.platforms.isNotEmpty)
+                        Text(
+                          offer.platforms.join(' · '),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.labelSmall,
+                        ),
                       const SizedBox(height: 8),
                       Text(
                         offer.stale
@@ -225,4 +236,44 @@ class OfferCard extends ConsumerWidget {
             ),
           ),
         );
+}
+
+class SourceAttribution extends StatelessWidget {
+  const SourceAttribution(this.offer, {super.key});
+  final Offer offer;
+  @override
+  Widget build(BuildContext context) => TextButton(
+    style: TextButton.styleFrom(
+      padding: EdgeInsets.zero,
+      minimumSize: const Size(48, 48),
+      alignment: AlignmentDirectional.centerStart,
+    ),
+    onPressed: safeExternalUri(offer.attributionUrl) == null
+        ? null
+        : () async {
+            try {
+              final opened = await launchUrl(
+                safeExternalUri(offer.attributionUrl)!,
+                mode: LaunchMode.externalApplication,
+              );
+              if (!opened && context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Could not open source link.')),
+                );
+              }
+            } catch (_) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Could not open source link.')),
+                );
+              }
+            }
+          },
+    child: Text(
+      'Data: ${offer.sourceName}',
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: const TextStyle(fontSize: 11),
+    ),
+  );
 }

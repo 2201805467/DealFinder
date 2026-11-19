@@ -14,6 +14,24 @@ export interface StoreProduct {
   market?: string;
   fetchedAt: string;
   priceRestricted?: boolean;
+  source?: SourceMetadata;
+}
+
+/** Metadata from a reviewed aggregator, distinct from the actual seller. */
+export interface SourceMetadata {
+  key: 'CHEAPSHARK' | 'GAMERPOWER';
+  itemId: string;
+  retailerId: string;
+  platforms: string[];
+  kind: 'game' | 'loot' | 'dlc' | 'beta' | 'giveaway';
+  attributionUrl: string;
+  referencePriceTrusted: boolean;
+  endsAt?: string;
+  endText?: string;
+}
+export interface ProviderContext {
+  signal?: AbortSignal;
+  onRequest?: () => Promise<void>;
 }
 
 export interface ProductSearch {
@@ -26,7 +44,7 @@ export interface ProductSearch {
 
 export interface ProductPage {
   products: StoreProduct[];
-  total: number;
+  total?: number;
   totalPages: number;
   page?: number;
   nextCursor?: string;
@@ -39,8 +57,12 @@ export interface StoreProvider {
   // Optional explicit capability. Unstable catalogues cannot claim full coverage across runs.
   readonly checkpointVersion?: string;
   readonly stablePagination?: boolean;
+  readonly resumeAcrossRuns?: boolean;
+  readonly reportsRequests?: boolean;
+  readonly maxPageSize?: number;
+  beginRun?(): void;
   searchProducts(
     search?: ProductSearch,
-    context?: { signal?: AbortSignal },
+    context?: ProviderContext,
   ): Promise<ProductPage>;
 }

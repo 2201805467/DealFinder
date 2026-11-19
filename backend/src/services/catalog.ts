@@ -1,6 +1,7 @@
 import { Prisma, type PrismaClient } from '../generated/prisma/client.js';
 import { AppError } from '../utils/app-error.js';
 import { decodeCatalogCursor, encodeCatalogCursor } from './catalog-cursor.js';
+import { sourceMetadataSchema } from '../providers/source-metadata.js';
 import type { CatalogQuery } from './catalog-query.js';
 import {
   dealScoreSql,
@@ -28,11 +29,15 @@ const productSelect = {
   updatedAt: true,
 } as const;
 const offerInclude = {
-  merchant: { select: merchantSelect },
+  merchant: {
+    select: { ...merchantSelect, dataSource: { select: merchantSelect } },
+  },
   product: { select: productSelect },
 } as const;
 type Offer = Prisma.OfferGetPayload<{ include: typeof offerInclude }>;
 function offerDto(offer: Offer, now = new Date(), rules = defaultScoringRules) {
+  const source = sourceMetadataSchema.safeParse(offer.sourceMetadata);
+  const { dataSource, ...merchant } = offer.merchant;
   const score = evaluateDeal(
     { ...offer, imageUrl: offer.product.imageUrl },
     now,
@@ -41,7 +46,11 @@ function offerDto(offer: Offer, now = new Date(), rules = defaultScoringRules) {
   return {
     id: offer.id,
     product: offer.product,
-    merchant: offer.merchant,
+    merchant,
+    source:
+      source.success && dataSource
+        ? { ...source.data, name: dataSource.name }
+        : null,
     externalProductId: offer.externalProductId,
     variantKey: offer.variantKey || null,
     currentPrice: offer.currentPrice?.toFixed() ?? null,
@@ -106,7 +115,15 @@ export class CatalogService {
         'minPrice must not exceed maxPrice.',
       );
     return {
-      AND: [liveAt(now)],
+      AND: [
+        liveAt(now),
+        {
+          OR: [
+            { merchant: { dataSourceId: null } },
+            { merchant: { dataSource: this.merchantWhere() } },
+          ],
+        },
+      ],
       merchant: this.merchantWhere(),
       product: {
         ...this.productWhere(now),
@@ -138,7 +155,7 @@ export class CatalogService {
         query.minPrice === undefined &&
         query.maxPrice === undefined && { currentPrice: { not: null } }),
       ...(deals && {
-        ...(query.view !== 'low_price' && {
+        ...(!['low_price', 'all'].includes(query.view ?? '') && {
           discountPercentage: { gt: 0 },
           referencePriceTrusted: true,
         }),
@@ -175,7 +192,7 @@ export class CatalogService {
     clauses.push(
       Prisma.sql`o.stale_at > ${now} AND o.current_price IS NOT NULL AND o.currency ~ '^[A-Z]{3}$' AND o.availability <> 'UNAVAILABLE'`,
     );
-    if (query.view !== 'low_price')
+    if (!['low_price', 'all'].includes(query.view ?? ''))
       clauses.push(
         Prisma.sql`o.reference_price_trusted AND o.discount_percentage > 0 AND o.reference_price > o.current_price AND o.reference_price > 0`,
       );
@@ -262,7 +279,12 @@ export class CatalogService {
     );
   }
   async deal(id: string) {
-    const query = { page: 1, pageSize: 20, sort: 'newest' } as CatalogQuery;
+    const query = {
+      page: 1,
+      pageSize: 20,
+      sort: 'newest',
+      view: 'all',
+    } as CatalogQuery;
     const now = new Date();
     const offer = await this.db.offer.findFirst({
       where: { ...this.offerWhere(query, now, true), id },
@@ -322,6 +344,7 @@ export class CatalogService {
       Prisma.sql`(o.expires_at IS NULL OR o.expires_at > ${now})`,
       Prisma.sql`(p.expires_at IS NULL OR p.expires_at > ${now})`,
       Prisma.sql`m.enabled AND m.storage_authorized AND cm.enabled AND cm.storage_authorized`,
+      Prisma.sql`(m.data_source_id IS NULL OR EXISTS (SELECT 1 FROM merchants ds WHERE ds.id=m.data_source_id AND ds.enabled AND ds.storage_authorized ${!this.includeSynthetic ? Prisma.sql`AND NOT ds.is_synthetic` : Prisma.empty}))`,
     ];
     if (!this.includeSynthetic)
       clauses.push(
@@ -451,7 +474,11 @@ export class CatalogService {
     return { data, pagination: this.page(query, total) };
   }
   async merchants(query: CatalogQuery) {
-    const where = this.merchantWhere();
+    const where: Prisma.MerchantWhereInput = {
+      ...this.merchantWhere(),
+      isDataSource: false,
+      OR: [{ dataSourceId: null }, { dataSource: this.merchantWhere() }],
+    };
     const [data, total] = await this.db.$transaction(
       [
         this.db.merchant.findMany({

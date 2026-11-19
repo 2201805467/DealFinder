@@ -58,6 +58,17 @@ class Offer {
       description = object(j['product'])['description'] as String?,
       imageUrl = object(j['product'])['imageUrl'] as String?,
       merchant = requiredText(object(j['merchant']), 'name'),
+      sourceName = (j['source'] as Map<String, dynamic>?)?['name'] as String?,
+      sourceKey = (j['source'] as Map<String, dynamic>?)?['key'] as String?,
+      attributionUrl =
+          (j['source'] as Map<String, dynamic>?)?['attributionUrl'] as String?,
+      platforms =
+          (((j['source'] as Map<String, dynamic>?)?['platforms']) as List? ??
+                  [])
+              .whereType<String>()
+              .toList(),
+      endText = (j['source'] as Map<String, dynamic>?)?['endText'] as String?,
+      kind = (j['source'] as Map<String, dynamic>?)?['kind'] as String?,
       current =
           j['currency'] is String &&
               RegExp(r'^[A-Z]{3}$').hasMatch(j['currency'] as String)
@@ -86,6 +97,8 @@ class Offer {
       ),
       reasons = (j['scoreReasons'] as List? ?? []).whereType<String>().toList();
   final String id, productId, name, merchant, currency, availability;
+  final String? sourceName, sourceKey, attributionUrl, endText, kind;
+  final List<String> platforms;
   final String? description,
       imageUrl,
       market,
@@ -98,6 +111,7 @@ class Offer {
   final Map<String, String> components;
   final List<String> reasons;
   bool get expired => expiresAt != null && !expiresAt!.isAfter(DateTime.now());
+  bool get free => current != null && !current!.positive;
   bool get valid =>
       !expired && !stale && current != null && availability != 'UNAVAILABLE';
   bool get hasDiscount =>
@@ -135,7 +149,7 @@ class CatalogQuery {
     this.minPrice = '',
     this.maxPrice = '',
     this.sort = 'score_desc',
-    this.view = 'discounted',
+    this.view = 'all',
   });
   final String search,
       currency,

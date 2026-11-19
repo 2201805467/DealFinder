@@ -8,12 +8,21 @@ const report = {
   builds: [],
 };
 const wrapper = path.resolve('qa/windows_flutter.cmd');
-for (const mode of process.argv.includes('--release-only')
-  ? ['release']
-  : ['debug', 'release']) {
+const realData = process.argv.includes('--real-data');
+for (const mode of process.argv.includes('--debug-only')
+  ? ['debug']
+  : process.argv.includes('--release-only')
+    ? ['release']
+    : ['debug', 'release']) {
   const start = performance.now();
   const task = mode === 'debug' ? 'assembleDebug' : 'assembleRelease';
-  const command = `gradlew.bat --init-script ../../backend/qa/windows-flutter.init.gradle -Dqa.flutter.wrapper=${wrapper} -Ptarget-platform=android-x64 -Ptarget=lib/main.dart ${task}`;
+  const defines = realData
+    ? ' -Pdart-defines=' +
+      ['API_BASE_URL=http://10.0.2.2:3337/api/v1', 'DEMO_MODE=false']
+        .map((v) => Buffer.from(v).toString('base64'))
+        .join(',')
+    : '';
+  const command = `gradlew.bat --no-daemon --max-workers=1 -Dorg.gradle.jvmargs=-Xmx1536m --init-script ../../backend/qa/windows-flutter.init.gradle -Dqa.flutter.wrapper=${wrapper} -Ptarget-platform=android-x64 -Ptarget=lib/main.dart${defines} ${task}`;
   const result = spawnSync('cmd.exe', ['/d', '/s', '/c', command], {
     cwd: '../mobile/android',
     env: {

@@ -1,0 +1,120 @@
+{
+  "checkedAt": "2026-11-19T14:43:15.633Z",
+  "existingDataOnly": true,
+  "note": "REAL DATA, bounded sample, not catalogue coverage or price history. Operational TTL applies to the live database; this is a one-time acceptance report.",
+  "cheapshark": {
+    "savedOffers": 20,
+    "savedProducts": 17,
+    "duplicateOffers": 0,
+    "syncRuns": [
+      {
+        "id": "0c9d5f77-f699-4784-8ef6-6dc14d672bd0",
+        "startedAt": "2026-11-19T14:41:35.486Z",
+        "finishedAt": "2026-11-19T14:41:36.396Z",
+        "status": "PARTIAL",
+        "processedCount": 20,
+        "requestCount": 1,
+        "pageCount": 1,
+        "skippedCount": 0,
+        "errorCode": "PAGE_LIMIT"
+      },
+      {
+        "id": "fac22e64-4aa0-4b0c-9513-c32ce1caec4d",
+        "startedAt": "2026-11-19T14:41:33.381Z",
+        "finishedAt": "2026-11-19T14:41:35.442Z",
+        "status": "PARTIAL",
+        "processedCount": 20,
+        "requestCount": 2,
+        "pageCount": 1,
+        "skippedCount": 0,
+        "errorCode": "PAGE_LIMIT"
+      }
+    ],
+    "note": "Verified existing real data and last two persisted live sync runs; no new product-source API requests in this pass."
+  },
+  "gamerpower": {
+    "savedOffers": 27,
+    "savedProducts": 27,
+    "duplicateOffers": 0,
+    "syncRuns": [
+      {
+        "id": "141c13e6-5929-4ee3-81e0-b96d91d6cfc4",
+        "startedAt": "2026-11-19T14:41:37.498Z",
+        "finishedAt": "2026-11-19T14:41:38.630Z",
+        "status": "PARTIAL",
+        "processedCount": 20,
+        "requestCount": 1,
+        "pageCount": 1,
+        "skippedCount": 0,
+        "errorCode": "PAGE_LIMIT"
+      },
+      {
+        "id": "7f0c6cc6-6254-4e47-90dd-3cf3e72b0d7c",
+        "startedAt": "2026-11-19T14:41:36.559Z",
+        "finishedAt": "2026-11-19T14:41:37.461Z",
+        "status": "PARTIAL",
+        "processedCount": 20,
+        "requestCount": 1,
+        "pageCount": 1,
+        "skippedCount": 0,
+        "errorCode": "PAGE_LIMIT"
+      }
+    ],
+    "note": "Verified existing real data and last two persisted live sync runs; no new product-source API requests in this pass."
+  },
+  "rest": {
+    "status": 200,
+    "visibleOffers": 40,
+    "syntheticOffers": 0,
+    "examples": [
+      {
+        "id": "00eb777e-f3e0-4f1a-8915-d88072ac2014",
+        "name": "Need for Speed Unbound Palace Edition",
+        "retailer": "Epic Games Store",
+        "source": "CheapShark",
+        "currentPrice": "9.59",
+        "referencePrice": "79.99",
+        "discountPercentage": "88.01",
+        "currency": "USD",
+        "productUrl": "https://www.cheapshark.com/redirect?dealID=YD5X6dY7VC35XOHlwZwh2ttQJwN2S%2BFJbknbU8EhpP4%3D",
+        "expiresAt": "2026-11-19T15:11:35.918Z"
+      },
+      {
+        "id": "05b29189-e272-4a85-808c-92355774a478",
+        "name": "Best Plumber (IndieGala) Giveaway",
+        "retailer": "Giveaway publisher not specified",
+        "source": "GamerPower",
+        "currentPrice": "0",
+        "referencePrice": null,
+        "discountPercentage": null,
+        "currency": "USD",
+        "productUrl": "https://www.gamerpower.com/open/best-plumber-pc-giveaway",
+        "expiresAt": "2026-11-19T14:51:38.208Z"
+      }
+    ]
+  },
+  "links": {
+    "checkedAt": "2026-11-19T14:38:31.333Z",
+    "development": {
+      "syntheticProducts": 19,
+      "syntheticOffers": 16
+    },
+    "links": [
+      {
+        "sourceType": "CHEAPSHARK",
+        "method": "GET",
+        "status": 403,
+        "destinationHost": null,
+        "followedToRetailer": false
+      },
+      {
+        "sourceType": "GAMERPOWER",
+        "method": "GET",
+        "status": 301,
+        "destinationHost": "store.epicgames.com",
+        "followedToRetailer": false
+      }
+    ]
+  },
+  "flutterExitCode": 0
+}

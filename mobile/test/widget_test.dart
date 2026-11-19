@@ -41,6 +41,7 @@ Future<ProviderContainer> mount(
         AppConfig(
           baseUrl: 'https://api.dealfinder.dev/api/v1',
           release: release,
+          requestedDemo: true,
         ),
       ),
       repositoryProvider.overrideWithValue(

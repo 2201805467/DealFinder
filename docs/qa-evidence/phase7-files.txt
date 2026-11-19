@@ -1,0 +1,69 @@
+Phase 7 — 2026-11-19T15:12:07.857Z
+M = modified, ?? = new/untracked. Generated Prisma client and build artifacts are ignored.
+
+ M PROGRESS.md
+ M PROJECT_SPEC.md
+ M README.md
+ M backend/.env.example
+ M backend/package.json
+ M backend/prisma/schema.prisma
+ M backend/qa/windows-build.mjs
+ M backend/src/config/env.ts
+ M backend/src/config/worker.ts
+ M backend/src/jobs/background-worker.ts
+ M backend/src/providers/safe-http.ts
+ M backend/src/providers/store-provider.ts
+ M backend/src/scripts/worker.ts
+ M backend/src/server.ts
+ M backend/src/services/catalog-query.ts
+ M backend/src/services/catalog.ts
+ M backend/src/services/offer-ingestion.ts
+ M backend/src/services/product-synchronization.ts
+ M backend/src/services/provider-registry.ts
+ M backend/tests/integration/catalog.test.ts
+ M docs/CATALOG.md
+ M docs/KNOWN_ISSUES.md
+ M docs/SYNCHRONIZATION.md
+ M docs/qa-evidence/apk-builds.json
+ M docs/qa-evidence/backend-verification.json
+ M docs/qa-evidence/flutter-verification.json
+ M mobile/README.md
+ M mobile/lib/core/config.dart
+ M mobile/lib/features/catalog/application/explore_controller.dart
+ M mobile/lib/features/catalog/domain/models.dart
+ M mobile/lib/features/catalog/presentation/detail_screen.dart
+ M mobile/lib/features/catalog/presentation/explore_screen.dart
+ M mobile/lib/features/catalog/presentation/home_screen.dart
+ M mobile/lib/features/catalog/presentation/offer_card.dart
+ M mobile/test/widget_test.dart
+?? backend/prisma/migrations/20261119150000_real_sources/migration.sql
+?? backend/qa/acceptance-owner.vbs
+?? backend/qa/capture-android.mjs
+?? backend/qa/cleanup-acceptance.mjs
+?? backend/qa/phase7-live.ts
+?? backend/qa/phase7-local-check.ts
+?? backend/qa/phase7-manifest.mjs
+?? backend/qa/source-preflight.mjs
+?? backend/src/providers/cheapshark/cheapshark-provider.ts
+?? backend/src/providers/gamerpower/gamerpower-provider.ts
+?? backend/src/providers/source-http.ts
+?? backend/src/providers/source-metadata.ts
+?? backend/src/scripts/real-source.ts
+?? backend/src/services/real-sources.ts
+?? backend/tests/integration/real-sources.test.ts
+?? backend/tests/real-providers.test.ts
+?? docs/CHEAPSHARK.md
+?? docs/DATA_SOURCES.md
+?? docs/GAMERPOWER.md
+?? docs/PHASE7_REPORT.md
+?? docs/qa-evidence/phase7-explore.png
+?? docs/qa-evidence/phase7-files.txt
+?? docs/qa-evidence/phase7-giveaway-detail.png
+?? docs/qa-evidence/phase7-giveaways.png
+?? docs/qa-evidence/phase7-home-offers.png
+?? docs/qa-evidence/phase7-home.png
+?? docs/qa-evidence/phase7-local-check.json
+?? docs/qa-evidence/phase7-real-data.json
+?? docs/qa-evidence/phase7-sort-menu.png
+?? mobile/test/real_sources_test.dart
+?? mobile/tool/real_data_ui_test.dart

@@ -44,7 +44,7 @@ class ExploreController extends Notifier<ExploreState> {
             market: next.market,
             minPrice: '',
             maxPrice: '',
-            view: 'discounted',
+            view: 'all',
           ),
         );
       }

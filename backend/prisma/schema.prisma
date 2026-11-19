@@ -13,6 +13,8 @@ enum SourceType {
   BESTBUY
   WOOCOMMERCE
   SYNTHETIC
+  CHEAPSHARK
+  GAMERPOWER
 }
 
 enum Availability {
@@ -33,7 +35,12 @@ model Merchant {
   id                       String     @id @default(uuid()) @db.Uuid
   name                     String
   sourceType               SourceType @map("source_type")
-  websiteUrl               String     @unique @map("website_url")
+  websiteUrl               String?    @unique @map("website_url")
+  isDataSource             Boolean    @default(false) @map("is_data_source")
+  dataSourceId             String?    @map("data_source_id") @db.Uuid
+  externalStoreId          String?    @map("external_store_id")
+  dataSource               Merchant?  @relation("SourceRetailers", fields: [dataSourceId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  retailers                Merchant[] @relation("SourceRetailers")
   enabled                  Boolean    @default(false)
   storageAuthorized        Boolean    @default(false) @map("storage_authorized")
   authorizationReference   String?    @map("authorization_reference")
@@ -51,6 +58,7 @@ model Merchant {
   syncRuns                 SyncRun[]
   contentProducts          Product[]  @relation("ProductContent")
 
+  @@unique([dataSourceId, externalStoreId])
   @@index([sourceType, enabled])
   @@index([syncEnabled, nextSyncAt])
   @@map("merchants")
@@ -105,6 +113,7 @@ model Offer {
   discountPercentage    Decimal?     @map("discount_percentage") @db.Decimal(7, 4)
   productUrl            String?      @map("product_url")
   affiliateUrl          String?      @map("affiliate_url")
+  sourceMetadata        Json?        @map("source_metadata")
   availability          Availability @default(UNKNOWN)
   isSynthetic           Boolean      @default(false) @map("is_synthetic")
   referencePriceTrusted Boolean      @default(false) @map("reference_price_trusted")

@@ -12,7 +12,7 @@ try {
     config,
     new CatalogService(
       database,
-      config.NODE_ENV !== 'production',
+      config.NODE_ENV !== 'production' && config.CATALOG_INCLUDE_SYNTHETIC,
       parseScoringRules(process.env.DEAL_SCORING_RULES),
     ),
   ).listen(config.PORT, config.HOST, () => {

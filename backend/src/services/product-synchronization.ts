@@ -21,7 +21,7 @@ import { OfferIngestionService } from './offer-ingestion.js';
 
 const pageSchema = z.object({
   products: z.array(z.unknown()),
-  total: z.number().int().nonnegative(),
+  total: z.number().int().nonnegative().optional(),
   totalPages: z.number().int().nonnegative(),
   page: z.number().int().positive().optional(),
   nextCursor: z.string().min(1).optional(),
@@ -93,14 +93,7 @@ export class ProductSynchronizationService {
       !merchant.storageAuthorized
     )
       return skipped('SOURCE_DISABLED');
-    if (
-      this.environment === 'production' ||
-      !['development', 'test'].includes(this.environment) ||
-      !this.options.allowSynthetic ||
-      !merchant.isSynthetic ||
-      merchant.sourceType !== 'SYNTHETIC'
-    )
-      return skipped('SOURCE_NOT_APPROVED');
+    if (!this.approved(merchant, force)) return skipped('SOURCE_NOT_APPROVED');
     const provider = this.registry.resolve(merchant);
     if (!provider) return skipped('PROVIDER_UNREGISTERED');
     try {
@@ -120,7 +113,7 @@ export class ProductSynchronizationService {
             !current.storageAuthorized
           )
             return skipped('SOURCE_DISABLED');
-          if (!current.isSynthetic || current.sourceType !== 'SYNTHETIC')
+          if (!this.approved(current, force))
             return skipped('SOURCE_NOT_APPROVED');
           if (current.syncNotBefore && current.syncNotBefore > new Date())
             return skipped('RATE_LIMIT_COOLDOWN');
@@ -153,6 +146,26 @@ export class ProductSynchronizationService {
       logger.error('Synchronization coordinator failed', { merchantId });
       return skipped('COORDINATOR_FAILED');
     }
+  }
+
+  private approved(merchant: Merchant, force: boolean) {
+    if (merchant.isSynthetic)
+      return (
+        ['development', 'test'].includes(this.environment) &&
+        this.options.allowSynthetic &&
+        merchant.sourceType === 'SYNTHETIC'
+      );
+    return (
+      ['development', 'test', 'production'].includes(this.environment) &&
+      !this.options.allowSynthetic &&
+      merchant.isDataSource &&
+      !!merchant.authorizationReference &&
+      ((merchant.sourceType === 'CHEAPSHARK' &&
+        this.options.cheapSharkEnabled &&
+        force) ||
+        (merchant.sourceType === 'GAMERPOWER' &&
+          this.options.gamerPowerEnabled))
+    );
   }
 
   private async execute(
@@ -195,6 +208,7 @@ export class ProductSynchronizationService {
       .digest('hex');
     const saved = checkpointSchema.safeParse(merchant.syncCheckpoint);
     const resume =
+      provider.resumeAcrossRuns !== false &&
       saved.success &&
       saved.data.fingerprint === fingerprint &&
       Date.now() - Date.parse(saved.data.savedAt) < 86400000
@@ -208,7 +222,21 @@ export class ProductSynchronizationService {
     let coverageIncomplete = resume?.incomplete ?? false;
     const pageSize =
       resume?.pageSize ??
-      Math.min(this.options.pageSize, this.options.maxProducts);
+      Math.min(
+        this.options.pageSize,
+        this.options.maxProducts,
+        provider.maxPageSize ?? 100,
+      );
+    provider.beginRun?.();
+    const countRequest = async () => {
+      if (requests >= this.options.maxRequests)
+        throw new StopRun('REQUEST_LIMIT');
+      requests++;
+      await this.db.syncRun.update({
+        where: { id: run.id },
+        data: { requestCount: requests },
+      });
+    };
     const seenCursors = new Set<string>();
     try {
       while (true) {
@@ -225,15 +253,11 @@ export class ProductSynchronizationService {
         let result: ProductPage | undefined;
         for (let attempt = 0; ; attempt++) {
           signal.throwIfAborted();
-          if (requests >= this.options.maxRequests)
+          if (!provider.reportsRequests && requests >= this.options.maxRequests)
             throw new StopRun('REQUEST_LIMIT');
-          requests++;
-          await this.db.syncRun.update({
-            where: { id: run.id },
-            data: { requestCount: requests },
-          });
+          if (!provider.reportsRequests) await countRequest();
           try {
-            result = await this.request(provider, search, signal);
+            result = await this.request(provider, search, signal, countRequest);
             break;
           } catch (error) {
             if (signal.aborted) throw error;
@@ -299,7 +323,7 @@ export class ProductSynchronizationService {
         const data = parsed.data;
         if (
           (data.total === 0 && data.products.length > 0) ||
-          (data.totalPages === 0 && data.total > 0)
+          (data.totalPages === 0 && (data.total ?? 0) > 0)
         )
           throw new ProviderError(
             'INVALID_RESPONSE',
@@ -310,7 +334,7 @@ export class ProductSynchronizationService {
           throw new StopRun('REPEATED_CURSOR');
         if (
           !data.products.length &&
-          data.total > 0 &&
+          (data.total ?? data.totalPages) > 0 &&
           pageNumber < data.totalPages
         )
           throw new StopRun('UNEXPECTED_EMPTY_PAGE');
@@ -350,11 +374,11 @@ export class ProductSynchronizationService {
           if (accepted.length)
             await this.ingestion.ingest(
               merchant.id,
-              accepted.map((product) => ({ product })),
+              await this.ingestionItems(accepted),
               {
                 syncRunId: run.id,
                 signal,
-                syntheticOnly: true,
+                syntheticOnly: merchant.isSynthetic,
                 checkpoint,
                 generation: merchant.syncGeneration,
               },
@@ -442,11 +466,15 @@ export class ProductSynchronizationService {
         await tx.merchant.update({
           where: { id: merchant.id },
           data: {
+            ...(provider.resumeAcrossRuns === false && {
+              syncCheckpoint: Prisma.DbNull,
+            }),
             nextSyncAt: new Date(
               Math.max(
                 retryNotBefore,
                 Date.now() +
-                  (checkpoint &&
+                  (provider.resumeAcrossRuns !== false &&
+                  checkpoint &&
                   ['PAGE_LIMIT', 'PRODUCT_LIMIT', 'REQUEST_LIMIT'].includes(
                     errorCode ?? '',
                   )
@@ -476,10 +504,32 @@ export class ProductSynchronizationService {
     return outcome;
   }
 
+  private async ingestionItems(products: ProductPage['products']) {
+    return Promise.all(
+      products.map(async (product) => {
+        if (!product.source) return { product };
+        const slug =
+          product.source.key === 'CHEAPSHARK'
+            ? 'pc-games'
+            : product.source.kind === 'dlc'
+              ? 'dlc'
+              : product.source.kind === 'game'
+                ? 'free-games'
+                : 'giveaways';
+        const category = await this.db.category.findUnique({ where: { slug } });
+        return {
+          product,
+          ...(category && !category.isSynthetic && { categoryId: category.id }),
+        };
+      }),
+    );
+  }
+
   private async request(
     provider: StoreProvider,
     search: ProductSearch,
     signal: AbortSignal,
+    onRequest: () => Promise<void>,
   ): Promise<ProductPage> {
     const timeoutController = new AbortController();
     const timer = setTimeout(
@@ -490,7 +540,7 @@ export class ProductSynchronizationService {
     let onAbort: (() => void) | undefined;
     try {
       return await Promise.race([
-        provider.searchProducts(search, { signal: combined }),
+        provider.searchProducts(search, { signal: combined, onRequest }),
         new Promise<never>((_resolve, reject) => {
           onAbort = () =>
             reject(

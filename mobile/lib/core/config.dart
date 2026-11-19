@@ -7,7 +7,7 @@ class AppConfig {
     this.release = kReleaseMode,
     this.requestedDemo = const bool.fromEnvironment(
       'DEMO_MODE',
-      defaultValue: true,
+      defaultValue: false,
     ),
   });
   factory AppConfig.environment() => AppConfig(

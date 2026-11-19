@@ -103,7 +103,10 @@ export function safeStoreFetch(localTest = false): typeof globalThis.fetch {
           lookup: pinnedLookup,
           agent: false,
           ...(init?.signal ? { signal: init.signal } : {}),
-          headers: { Accept: 'application/json' },
+          headers: {
+            Accept: 'application/json',
+            'User-Agent': 'DealFinder/0.1 PortfolioDemo',
+          },
         },
         (response) => {
           if (

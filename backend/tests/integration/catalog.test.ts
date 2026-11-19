@@ -4,6 +4,7 @@ import { once } from 'node:events';
 import type { AddressInfo } from 'node:net';
 import { before, after, test } from 'node:test';
 import { createDatabaseClient } from '../../src/database/client.js';
+import { Prisma } from '../../src/generated/prisma/client.js';
 import { assertTestDatabase } from '../../src/database/development-guard.js';
 import { CatalogService } from '../../src/services/catalog.js';
 import { parseCatalogQuery } from '../../src/services/catalog-query.js';
@@ -217,7 +218,15 @@ test('duplicate source records are upserted under concurrency without orphan pro
   const row = await db.offer.findUniqueOrThrow({
     where: { id: a.offerIds[0]! },
   });
-  await assert.rejects(db.offer.create({ data: { ...row, id: randomUUID() } }));
+  await assert.rejects(
+    db.offer.create({
+      data: {
+        ...row,
+        sourceMetadata: row.sourceMetadata ?? Prisma.DbNull,
+        id: randomUUID(),
+      },
+    }),
+  );
 });
 
 test('market, currency and variant form independent source identities', async () => {

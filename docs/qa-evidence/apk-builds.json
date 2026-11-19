@@ -1,20 +1,13 @@
 {
-  "checkedAt": "2026-11-18T20:43:40.285Z",
+  "checkedAt": "2026-11-19T14:28:44.805Z",
   "method": "Scoped Gradle init invokes installed Flutter snapshot directly; no SDK modifications",
   "builds": [
     {
       "mode": "debug",
       "exitCode": 0,
-      "durationSeconds": 27.3863792,
-      "bytes": 105394555,
+      "durationSeconds": 155.39592130000003,
+      "bytes": 105405151,
       "path": "../mobile/build/app/outputs/flutter-apk/app-debug.apk"
-    },
-    {
-      "mode": "release",
-      "exitCode": 0,
-      "durationSeconds": 93.98362580000001,
-      "bytes": 21721067,
-      "path": "../mobile/build/app/outputs/flutter-apk/app-release.apk"
     }
   ]
 }

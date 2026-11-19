@@ -1,0 +1,23 @@
+{
+  "checkedAt": "2026-11-19T14:38:31.333Z",
+  "development": {
+    "syntheticProducts": 19,
+    "syntheticOffers": 16
+  },
+  "links": [
+    {
+      "sourceType": "CHEAPSHARK",
+      "method": "GET",
+      "status": 403,
+      "destinationHost": null,
+      "followedToRetailer": false
+    },
+    {
+      "sourceType": "GAMERPOWER",
+      "method": "GET",
+      "status": 301,
+      "destinationHost": "store.epicgames.com",
+      "followedToRetailer": false
+    }
+  ]
+}

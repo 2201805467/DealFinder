@@ -31,7 +31,7 @@ const schema = z
         'score_desc',
       ])
       .default('newest'),
-    view: z.enum(['discounted', 'top', 'low_price']).optional(),
+    view: z.enum(['all', 'discounted', 'top', 'low_price']).optional(),
     pagination: z.enum(['cursor']).optional(),
     cursor: z.string().min(1).max(2048).optional(),
   })

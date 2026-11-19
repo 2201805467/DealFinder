@@ -1,14 +1,45 @@
 # DealFinder
 
-المرجع الأساسي هو [PROJECT_SPEC.md](PROJECT_SPEC.md). أضيفت في المرحلة الثالثة قاعدة المنتجات والعروض وواجهات القراءة باستخدام بيانات تطوير اصطناعية فقط. Best Buy موقوف مؤقتًا وطلب AliExpress قيد المراجعة وWooCommerce مختبر بـMock؛ لا يوجد متجر خارجي مصرح به للاستخدام التجاري.
+المرجع الأساسي هو [PROJECT_SPEC.md](PROJECT_SPEC.md). الأولوية الحالية تطبيق Full-Stack Mobile ببيانات حقيقية للـCV وPortfolio. تدمج المرحلة السابعة CheapShark وGamerPower عبر واجهاتهما العامة دون حسابات أو مفاتيح، مع فصل المصدر عن البائع والإسناد والاحتفاظ المحدود. Best Buy معلق، وAwin رفض الطلب، وAliExpress Affiliate approved لكن صلاحيات المطور غير مكتملة، وWooCommerce محلي/Mock. [حالة المصادر وشروطها](docs/DATA_SOURCES.md) و[نتائج المرحلة السابعة](docs/PHASE7_REPORT.md).
 
-المرحلة السادسة أضافت فحوص الجودة والأمان والحمل وإصلاحات المزامنة والواجهة. النتائج الفعلية والقيود في [QA_REPORT](docs/QA_REPORT.md) و[SECURITY_AUDIT](docs/SECURITY_AUDIT.md) و[PERFORMANCE_REPORT](docs/PERFORMANCE_REPORT.md) و[KNOWN_ISSUES](docs/KNOWN_ISSUES.md). لم تبدأ المرحلة السابعة.
+المرحلة السادسة أضافت فحوص الجودة والأمان والحمل وإصلاحات المزامنة والواجهة. النتائج التاريخية في [QA_REPORT](docs/QA_REPORT.md) و[SECURITY_AUDIT](docs/SECURITY_AUDIT.md) و[PERFORMANCE_REPORT](docs/PERFORMANCE_REPORT.md)، والقيود الحالية في [KNOWN_ISSUES](docs/KNOWN_ISSUES.md). لم يبدأ النشر.
 
-المرحلة6.1 حسنت عوامل التقييم وأضافت Cursor اختياريًا للأحدث وقوالب أدوار PostgreSQL منفصلة. راجع [نتائج تحسين الأداء](docs/PERFORMANCE_OPTIMIZATION.md) و[إرشادات الأدوار](docs/DATABASE_ROLES.md). لا يوجد نشر أو حساب إنتاج أو مصدر تجاري جديد؛ أهداف الأداء التي لم تتحقق موثقة صراحة.
+المرحلة6.1 حسنت عوامل التقييم وأضافت Cursor اختياريًا للأحدث وقوالب أدوار PostgreSQL منفصلة. راجع [نتائج تحسين الأداء](docs/PERFORMANCE_OPTIMIZATION.md) و[إرشادات الأدوار](docs/DATABASE_ROLES.md). لا يوجد نشر أو حساب إنتاج؛ أهداف الأداء التي لم تتحقق ما زالت موثقة صراحة.
 
 أضافت المرحلة الخامسة تطبيق Flutter داخل `mobile` لعرض العروض والبحث والتصفية والتفاصيل والمفضلة المحلية والإعدادات، مع Demo Mode صريح وحجب البيانات الاصطناعية في Release. [دليل تشغيل تطبيق الموبايل وبنيته واختباراته](mobile/README.md).
 
 تضيف المرحلة الرابعة Worker مستقلًا ومزامنة Mock اصطناعية وتقييم عروض قابلًا للتفسير. التشغيل مغلق افتراضيًا وممنوع للبيانات الاصطناعية في الإنتاج. [دليل المزامنة والتقييم](docs/SYNCHRONIZATION.md) يشرح الأوامر والجدولة والحدود والأوزان وMigration الجديدة.
+
+## عرض البيانات الحقيقية محليًا
+
+من Git Bash، بعد تجهيز `.env` وPostgreSQL كما في التعليمات التالية:
+
+```bash
+cd backend
+docker compose up -d --wait
+npm run db:migrate
+npm run cheapshark:sync -- --confirm --limit 20
+npm run gamerpower:sync -- --confirm --limit 20
+npm run dev
+```
+
+في نافذة أخرى:
+
+```bash
+cd mobile
+flutter run --dart-define=API_BASE_URL=http://10.0.2.2:3000/api/v1 --dart-define=DEMO_MODE=false
+```
+
+`10.0.2.2` خاص بمحاكي Android؛ الهاتف يحتاج عنوان جهاز التطوير المتاح له. لا endpoint إنترنت أو نشر في هذه المرحلة. إذا علق PowerShell داخل flutter.bat راجع بديل Windows المحلي في `mobile/README.md`.
+
+تنتهي صلاحية عينات CheapShark بعد30 دقيقة وGamerPower بعد10 دقائق، فتختفي من الواجهة؛ هذا مقصود لحماية حداثة البيانات. أعد المزامنة يدويًا عند الحاجة. CheapShark يدوي محدود فقط. للجدولة الاختيارية لـGamerPower في نافذة مستقلة:
+
+```bash
+cd backend
+WORKER_ENABLED=true WORKER_ALLOW_SYNTHETIC=false GAMERPOWER_ENABLED=true npm run worker:real
+```
+
+العامل مستقل ولا يبدأ معExpress؛ التفعيل مغلق افتراضيًا. يعيد GamerPower طلب خلاصة كل300 ثانية، وينظف البيانات المنتهية دوريًا. `npm run db:purge-expired` صيانة يدوية بديلة. الأسعارUSD دون تحويل عملة، والسوق غير معروف؛ اترك مرشح الدولة فارغًا ولا تفترض إتاحة عالمية. `view=all` يعرض المجاني أيضًا؛ مسارdeals دونview يحافظ على شرط الخصم السابق. لا تعرض قيمةWorth كتخفيض موثوق.
 
 ## متطلبات التشغيل
 
@@ -35,6 +66,8 @@ Copy-Item .env.example .env
 | `DATABASE_URL` | رابط PostgreSQL مطلوب؛ لا تسجله أو تشاركه |
 | `CORS_ORIGINS` | أصول HTTP(S) مسموحة مفصولة بفواصل، بلا مسار أو شرطة مائلة أخيرة؛ القيمة الفارغة لا تسمح بطلبات متصفح عبر أصول مختلفة |
 | `API_RATE_LIMIT_MAX` | عدد الطلبات لكل IP خلال دقيقة، افتراضيًا300. حد القبول64 طلبًا جاريًا لكل عملية؛ trust proxy مغلق |
+| `CATALOG_INCLUDE_SYNTHETIC` | false افتراضيًا؛ يسمح ببياناتDemo فقط عندtrue فيالتطوير، ويُتجاهل فيالإنتاج. يلزمDEMO_MODE=true صراحةً فيFlutter لعرضها |
+| `CHEAPSHARK_ENABLED`, `GAMERPOWER_ENABLED` | false افتراضيًا؛ تفعيل مستقل للعامل الحقيقي. CheapShark لا يدخل الجدولة حتى عندتفعيله |
 | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` | إعدادات حاوية PostgreSQL المحلية |
 | `POSTGRES_PORT` | منفذ PostgreSQL المحلي، افتراضيًا `5432` |
 
@@ -152,6 +185,6 @@ backend/
 
 `src/jobs/` يحوي العامل المستقل، و`src/scoring/` يحوي التقييم. لا توجد ملفات أو طبقات فارغة تمهيدية. لا تستخدم Health Service لأن فحص الصحة الحالي لا يحتاج منطق أعمال، ولا يبدأ Worker مع Express.
 
-المفاتيح تبقى في إعدادات الخادم ولا تُرسل للموبايل. لا يوجد تسجيل دخول أو تخزين لمنتجات تجارية حقيقية. إعداد Docker هنا للتطوير المحلي فقط؛ إعداد الإنتاج والنشر ضمن مرحلتهما المنفصلة.
+المفاتيح تبقى في إعدادات الخادم ولا تُرسل للموبايل. لا يوجد تسجيل دخول. عينات المصدرين العامين تحفظ مؤقتًا وفق السياسة الموثقة، ولا يبدأ أي تكامل مع Best Buy أوWooCommerce تلقائيًا. إعداد Docker هنا للتطوير المحلي فقط؛ إعداد الإنتاج والنشر ضمن مرحلة منفصلة غير مصرح بها الآن.
 
 مراجع الإعداد: [Prisma 7](https://www.prisma.io/docs/orm/v7)، و[معالجة الأخطاء في Express 5](https://expressjs.com/en/5x/guide/error-handling/).

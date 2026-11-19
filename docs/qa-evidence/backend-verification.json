@@ -1,54 +1,54 @@
 {
-  "checkedAt": "2026-11-19T08:53:16.919Z",
+  "checkedAt": "2026-11-19T15:09:31.086Z",
   "steps": [
     {
       "name": "format",
       "exitCode": 0,
-      "durationMs": 1088.1351
+      "durationMs": 1364.826
     },
     {
       "name": "prisma-format",
       "exitCode": 0,
-      "durationMs": 1567.0988000000002
+      "durationMs": 2159.6206
     },
     {
       "name": "generate",
       "exitCode": 0,
-      "durationMs": 1713.7441999999996
+      "durationMs": 1981.2065999999995
     },
     {
       "name": "typecheck",
       "exitCode": 0,
-      "durationMs": 2082.4710999999998
+      "durationMs": 2653.6256999999996
     },
     {
       "name": "build",
       "exitCode": 0,
-      "durationMs": 2065.8903
+      "durationMs": 5287.3577000000005
     },
     {
       "name": "migrate",
       "exitCode": 0,
-      "durationMs": 2079.0766999999996
+      "durationMs": 3324.2235999999994
     },
     {
       "name": "unit",
       "exitCode": 0,
-      "durationMs": 1298.5995000000003,
-      "tests": "62",
+      "durationMs": 2009.1733999999997,
+      "tests": "74",
       "failed": "0"
     },
     {
       "name": "integration",
       "exitCode": 0,
-      "durationMs": 60405.9196,
-      "tests": "60",
+      "durationMs": 60043.326499999996,
+      "tests": "70",
       "failed": "0"
     },
     {
       "name": "migration-status",
       "exitCode": 0,
-      "durationMs": 1772.465400000001
+      "durationMs": 1666.8702000000048
     }
   ]
 }

@@ -43,6 +43,10 @@ const environmentSchema = z
           .filter(Boolean),
       )
       .pipe(z.array(httpOrigin)),
+    CATALOG_INCLUDE_SYNTHETIC: z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((v) => v === 'true'),
   })
   .superRefine((value, ctx) => {
     if (value.NODE_ENV !== 'production') return;
