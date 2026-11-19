@@ -13,12 +13,14 @@ class ExploreState {
     this.hasMore = true,
     this.loading = false,
     this.error,
+    this.limited = false,
   });
   final CatalogQuery query;
   final List<Offer> items;
   final int page;
   final bool hasMore, loading;
   final Object? error;
+  final bool limited;
 }
 
 final exploreProvider = NotifierProvider<ExploreController, ExploreState>(
@@ -26,6 +28,7 @@ final exploreProvider = NotifierProvider<ExploreController, ExploreState>(
 );
 
 class ExploreController extends Notifier<ExploreState> {
+  static const maxResidentOffers = 1000;
   Timer? _debounce;
   CancelToken? _cancel;
   int _generation = 0;
@@ -51,7 +54,9 @@ class ExploreController extends Notifier<ExploreState> {
       _cancel?.cancel();
       _generation++;
     });
-    Future.microtask(() => load());
+    Future.microtask(() {
+      if (ref.mounted) load();
+    });
     return ExploreState(
       query: CatalogQuery(currency: settings.currency, market: settings.market),
     );
@@ -79,6 +84,7 @@ class ExploreController extends Notifier<ExploreState> {
 
   Future<void> refresh() => select(state.query);
   Future<void> load() async {
+    if (!ref.mounted) return;
     if (state.loading && _cancel != null && !_cancel!.isCancelled) return;
     if (!state.hasMore) return;
     final generation = _generation;
@@ -103,9 +109,10 @@ class ExploreController extends Notifier<ExploreState> {
       };
       state = ExploreState(
         query: before.query,
-        items: unique.values.toList(),
+        items: unique.values.take(maxResidentOffers).toList(),
         page: result.page,
-        hasMore: result.hasMore,
+        hasMore: result.hasMore && unique.length < maxResidentOffers,
+        limited: result.hasMore && unique.length >= maxResidentOffers,
       );
     } catch (e) {
       if (generation != _generation || !ref.mounted || token.isCancelled) {

@@ -61,6 +61,7 @@ test('MOCK WooCommerce: converts integer minor units for zero, two, three and si
 });
 
 test('MOCK WooCommerce: rejects missing, decimal, negative, unsafe and malformed minor-unit amounts', () => {
+  assert.equal(minorUnitAmount('9007199254740991', 6), undefined);
   for (const value of [
     undefined,
     null,

@@ -481,6 +481,23 @@ test('manual purge erases expired source metadata without deleting another merch
   );
 });
 
+test('QA: nested offer fanout is bounded while saved offers remain resolvable', async () => {
+  const items = Array.from({ length: 25 }, (_, i) => ({
+    productId: alphaProductId,
+    product: normalized(merchantA, 'qa-fanout-' + i),
+  }));
+  const saved = await ingest.ingest(merchantA.id, items);
+  const result = await catalog.product(alphaProductId);
+  assert.equal(result.data.offers.length, 20);
+  assert.equal(result.data.offersTruncated, true);
+  const exact = await get(
+    '/products/' + alphaProductId + '?offerId=' + saved.offerIds[24],
+  );
+  assert.equal(exact.status, 200);
+  assert.equal(exact.body.data.offers.length, 1);
+  assert.equal(exact.body.data.offers[0].id, saved.offerIds[24]);
+});
+
 test('development seed is idempotent without deleting existing rows', async () => {
   await seedDevelopment(db);
   const products = await db.product.count({
@@ -496,4 +513,20 @@ test('development seed is idempotent without deleting existing rows', async () =
     products,
   );
   assert.ok(await db.offer.findUnique({ where: { id: alphaId } }));
+});
+
+test('QA: SQL/XSS payloads remain literal data, and wildcard searches are escaped', async () => {
+  const beforeCount = await db.offer.count();
+  for (const q of ["' OR 1=1 --", '%_\\', "<script>alert('x')</script>"]) {
+    const response = await fetch(base + '/deals?q=' + encodeURIComponent(q));
+    assert.equal(response.status, 200);
+    assert.match(
+      response.headers.get('content-type') ?? '',
+      /application\/json/,
+    );
+    assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
+    const body = (await response.json()) as { data: unknown[] };
+    assert.equal(body.data.length, 0);
+  }
+  assert.equal(await db.offer.count(), beforeCount);
 });

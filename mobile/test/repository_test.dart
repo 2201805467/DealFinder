@@ -5,6 +5,18 @@ import 'package:dealfinder_mobile/features/catalog/domain/models.dart';
 import 'support.dart';
 
 void main() {
+  test(
+    'QA: invalid pagination cannot produce repeated infinite-scroll requests',
+    () async {
+      final r = repository(
+        (o) => response(envelope([fixture()], page: 1, pages: 4)),
+      );
+      await expectLater(
+        r.offers(const CatalogQuery(), page: 2),
+        throwsA(isA<CatalogException>()),
+      );
+    },
+  );
   test('Loads paginated DTO using correct API path', () async {
     final r = repository((o) {
       expect(o.uri.path, '/api/v1/deals');

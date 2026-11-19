@@ -141,7 +141,10 @@ export function evaluateDeal(
 
 // Same rules in PostgreSQL numeric arithmetic for ranking BEFORE pagination.
 // The only table aliases are fixed here, never supplied by API clients.
-export function dealScoreSql(now: Date, r = defaultScoringRules): Prisma.Sql {
+export function legacyDealScoreSql(
+  now: Date,
+  r = defaultScoringRules,
+): Prisma.Sql {
   return Prisma.sql`CASE WHEN o.current_price IS NULL OR o.currency !~ '^[A-Z]{3}$'
     OR o.availability = 'UNAVAILABLE' OR o.stale_at IS NULL OR o.stale_at <= ${now}
     OR (o.expires_at IS NOT NULL AND o.expires_at <= ${now}) THEN 0::numeric ELSE round(
@@ -153,4 +156,26 @@ export function dealScoreSql(now: Date, r = defaultScoringRules): Prisma.Sql {
     + ((CASE WHEN o.product_url IS NOT NULL THEN 1 ELSE 0 END)+(CASE WHEN p.image_url IS NOT NULL THEN 1 ELSE 0 END))::numeric/2*${r.qualityWeight}
     + CASE WHEN o.shipping_cost IS NULL THEN 0 WHEN o.current_price=0 THEN CASE WHEN o.shipping_cost=0 THEN ${r.shippingWeight} ELSE 0 END
       ELSE GREATEST(0::numeric, LEAST(1::numeric, 1-o.shipping_cost/o.current_price))*${r.shippingWeight} END, 2) END`;
+}
+
+// The stored factors are weight-independent and unrounded. PostgreSQL regenerates
+// them on EVERY offer write. Image quality and freshness are intentionally live.
+// eligibleOnly is internal: the caller must already apply all validity predicates.
+export function dealScoreSql(
+  now: Date,
+  r = defaultScoringRules,
+  eligibleOnly = false,
+): Prisma.Sql {
+  const epoch = new Prisma.Decimal(now.getTime()).div(1000).toFixed(3);
+  const score = Prisma.sql`round(
+    LEAST(o.score_discount_percent,${r.discountCap}::numeric)/${r.discountCap}::numeric*${r.discountWeight}
+    + GREATEST(0::numeric,LEAST(1::numeric,1-GREATEST(0::numeric,${epoch}::numeric-o.score_updated_epoch)/o.score_freshness_seconds))*${r.freshnessWeight}
+    + CASE WHEN o.availability='AVAILABLE' THEN ${r.availabilityWeight} ELSE 0 END
+    + ((CASE WHEN o.product_url IS NOT NULL THEN 1 ELSE 0 END)+(CASE WHEN p.image_url IS NOT NULL THEN 1 ELSE 0 END))::numeric/2*${r.qualityWeight}
+    + o.score_shipping_fraction*${r.shippingWeight},2)`;
+  return eligibleOnly
+    ? score
+    : Prisma.sql`CASE WHEN o.current_price IS NULL OR o.currency !~ '^[A-Z]{3}$'
+    OR o.availability='UNAVAILABLE' OR o.stale_at IS NULL OR o.stale_at<=${now}
+    OR(o.expires_at IS NOT NULL AND o.expires_at<=${now}) THEN 0::numeric ELSE ${score} END`;
 }

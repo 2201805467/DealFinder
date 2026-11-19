@@ -247,13 +247,19 @@ class HomeSection extends ConsumerWidget {
                       'Try another currency or market.',
                     )
                   : SizedBox(
-                      height: 340,
+                      height:
+                          350 +
+                          (MediaQuery.textScalerOf(context).scale(14) / 14 - 1)
+                                  .clamp(0, 3) *
+                              220,
                       child: ListView.builder(
                         padding: const EdgeInsets.symmetric(horizontal: 14),
                         scrollDirection: Axis.horizontal,
                         itemCount: page.items.length,
                         itemBuilder: (context, i) => SizedBox(
-                          width: 215,
+                          width: MediaQuery.textScalerOf(context).scale(14) > 18
+                              ? MediaQuery.sizeOf(context).width - 32
+                              : 215,
                           child: OfferCard(page.items[i]),
                         ),
                       ),

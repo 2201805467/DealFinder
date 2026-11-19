@@ -1,0 +1,31 @@
+{
+  "checkedAt": "2026-11-19T08:25:16.993Z",
+  "purpose": "diagnose transaction acquisition errors, NOT a production capacity claim",
+  "cases": [
+    {
+      "transactionMaxWaitMs": 2000,
+      "durationSeconds": 8.06,
+      "successfulRps": 35.73200992555831,
+      "errorRate": 0.03355704697986577,
+      "successfulP95Ms": 2148.6174,
+      "statuses": {
+        "200": 288,
+        "503": 10
+      },
+      "errorsByCode": {
+        "P2028": 28
+      }
+    },
+    {
+      "transactionMaxWaitMs": 5000,
+      "durationSeconds": 8.12,
+      "successfulRps": 17.487684729064043,
+      "errorRate": 0,
+      "successfulP95Ms": 5038.2235,
+      "statuses": {
+        "200": 142
+      },
+      "errorsByCode": {}
+    }
+  ]
+}

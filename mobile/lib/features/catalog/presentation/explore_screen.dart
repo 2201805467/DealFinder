@@ -45,23 +45,26 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                 ),
               ),
               const SizedBox(height: 14),
-              SearchBar(
-                controller: search,
-                hintText: 'Search products',
-                leading: const Icon(Icons.search),
-                onChanged: control.search,
-                elevation: const WidgetStatePropertyAll(0),
-                trailing: [
-                  if (search.text.isNotEmpty)
-                    IconButton(
-                      tooltip: 'Clear search',
-                      onPressed: () {
-                        search.clear();
-                        control.search('');
-                      },
-                      icon: const Icon(Icons.close),
-                    ),
-                ],
+              Semantics(
+                label: 'Search products',
+                child: SearchBar(
+                  controller: search,
+                  hintText: 'Search products',
+                  leading: const Icon(Icons.search),
+                  onChanged: control.search,
+                  elevation: const WidgetStatePropertyAll(0),
+                  trailing: [
+                    if (search.text.isNotEmpty)
+                      IconButton(
+                        tooltip: 'Clear search',
+                        onPressed: () {
+                          search.clear();
+                          control.search('');
+                        },
+                        icon: const Icon(Icons.close),
+                      ),
+                  ],
+                ),
               ),
               const SizedBox(height: 8),
               Row(
@@ -177,10 +180,22 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                     sliver: SliverLayoutBuilder(
                       builder: (context, constraints) => SliverGrid(
                         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: (constraints.crossAxisExtent / 180)
-                              .floor()
-                              .clamp(1, 4),
-                          mainAxisExtent: 350,
+                          crossAxisCount:
+                              (constraints.crossAxisExtent /
+                                      (MediaQuery.textScalerOf(
+                                                context,
+                                              ).scale(14) >
+                                              18
+                                          ? 320
+                                          : 180))
+                                  .floor()
+                                  .clamp(1, 4),
+                          mainAxisExtent:
+                              350 +
+                              (MediaQuery.textScalerOf(context).scale(14) / 14 -
+                                          1)
+                                      .clamp(0, 3) *
+                                  220,
                         ),
                         delegate: SliverChildBuilderDelegate(
                           (context, i) => OfferCard(state.items[i]),
@@ -195,6 +210,16 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                         'Could not load products',
                         state.error.toString(),
                         retry: control.load,
+                      ),
+                    ),
+                  if (state.limited)
+                    const SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.all(20),
+                        child: Text(
+                          'Showing the first 1,000 results. Refine your search or filters to see more.',
+                          textAlign: TextAlign.center,
+                        ),
                       ),
                     ),
                   if (state.items.isNotEmpty && state.loading)

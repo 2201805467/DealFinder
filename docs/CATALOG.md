@@ -83,6 +83,17 @@ Deals تعني عروضًا ذات نسبة محسوبة موجبة وغير م�
 
 المخرجات داخل `data`، ومع القوائم `pagination: {page,pageSize,total,totalPages}`. الفراغ يعيد `200` وقائمة فارغة. بيانات المنتجات والعروض تحتوي `isSynthetic` صريحًا؛ الأسماء الاصطناعية تبدأ DEMO. التفاصيل تعرض العروض الصالحة فقط، ولا يُكشف مرجع وثيقة الموافقة. قوائم التصنيفات والمتاجر مخصصة أساسًا لـPagination؛ استخدم مرشحات المنتج في قوائم products/deals.
 
+تحديث المرحلة السادسة: `products` وتفاصيل المنتج تعرض حتى20 عرضًا متداخلًا لكل منتج لمنع تضخم الاستجابة، مع `offersTruncated=true` إن تجاوزت العروض المطابقة السقف. استخدم قائمة deals المرقمة أو `GET /api/v1/products/:id?offerId=<uuid>` للوصول إلى عرض معين، بما فيه fallback للمفضلة ذات السعر المنخفض. لا يتجاوز ذلك قواعد صلاحية العرض. أضيف فهرس `(currency,last_updated_at DESC,id)` وGIN على `lower(name)` بعد القياس في100k؛ راجع [تقرير الأداء](PERFORMANCE_REPORT.md). أخطاء انشغالDB المعروفة تعيد503/Retry-After بدل كشف تفاصيلها.
+
+تحديث6.1: يتوفر Cursor اختياري للأحدث فقط، دون تغيير العقد الذي يستخدمه Flutter:
+
+```text
+GET /api/v1/deals?pagination=cursor&sort=newest&currency=USD&pageSize=20
+GET /api/v1/deals?pagination=cursor&sort=newest&currency=USD&pageSize=20&cursor=<nextCursor>
+```
+
+في هذا النمط فقط يصبح total وtotalPages بقيمة null، ويضاف hasMore وnextCursor. لا يُحسب العدد ولا يُستخدم OFFSET. يتطلب المرشحات وحجم الصفحة نفسيهما وpage=1، وصلاحية الرمز15 دقيقة. ترتيب newest مستقر عبر lastUpdatedAt DESC ثمUUID ASC؛ لا يجمّد تغيرات الكتالوج أو صلاحية العروض، ويُفحص الانتهاء والقدم والموافقة في كل طلب. Cursor غير مدعوم لترتيب Score المتغير زمنيًا أو مسارات products/categories/merchants؛ يعاد400 عند استخدامه هناك. الطلبات الافتراضية باقية كما هي. التفاصيل والقياسات في [PERFORMANCE_OPTIMIZATION.md](PERFORMANCE_OPTIMIZATION.md).
+
 ```text
 GET /api/v1/deals?currency=USD&sort=price_asc&pageSize=5
 GET /api/v1/products?q=DEMO&market=DE&currency=EUR&minPrice=5&maxPrice=100

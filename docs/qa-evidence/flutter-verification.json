@@ -1,0 +1,21 @@
+{
+  "checkedAt": "2026-11-19T08:11:45.297Z",
+  "steps": [
+    {
+      "name": "format",
+      "exitCode": 0,
+      "durationMs": 452.0106
+    },
+    {
+      "name": "analyze",
+      "exitCode": 0,
+      "durationMs": 13333.0418
+    },
+    {
+      "name": "tests",
+      "exitCode": 0,
+      "durationMs": 19739.237399999998,
+      "passed": 48
+    }
+  ]
+}

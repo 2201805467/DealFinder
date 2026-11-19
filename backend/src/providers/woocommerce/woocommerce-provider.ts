@@ -6,6 +6,11 @@ import type {
   StoreProvider,
 } from '../store-provider.js';
 import { normalizeWooCommerceProduct } from './normalize.js';
+import {
+  assertStoreUrl,
+  boundedProviderJson,
+  safeStoreFetch,
+} from '../safe-http.js';
 
 interface Options {
   baseUrl: string;
@@ -72,6 +77,7 @@ export class WooCommerceProvider implements StoreProvider {
       );
     }
     const timeout = options.timeoutMs ?? 10000;
+    assertStoreUrl(base, options.usage === 'local-test');
     if (!Number.isInteger(timeout) || timeout < 100 || timeout > 60000) {
       throw new ProviderError(
         'CONFIGURATION',
@@ -81,7 +87,8 @@ export class WooCommerceProvider implements StoreProvider {
     base.pathname = `${base.pathname.replace(/\/$/, '')}/`;
     this.#endpoint = new URL('wp-json/wc/store/v1/products', base);
     this.name = options.storeName.trim();
-    this.#fetch = options.fetch ?? globalThis.fetch;
+    this.#fetch =
+      options.fetch ?? safeStoreFetch(options.usage === 'local-test');
     this.#timeoutMs = timeout;
   }
 
@@ -148,7 +155,7 @@ export class WooCommerceProvider implements StoreProvider {
       }
       let payload: unknown;
       try {
-        payload = await response.json();
+        payload = await boundedProviderJson(response, signal);
       } catch {
         if (signal.aborted)
           throw new ProviderError('TIMEOUT', 'WooCommerce request timed out.');

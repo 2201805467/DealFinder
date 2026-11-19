@@ -1,0 +1,347 @@
+{
+  "checkedAt": "2026-11-18T19:58:07.833Z",
+  "requestsPerCase": 50,
+  "concurrency": 10,
+  "cases": [
+    {
+      "parallelWorkers": 2,
+      "ok": 5,
+      "failures": [
+        {
+          "code": "P2010",
+          "sqlState": "53100",
+          "message": "could not resize shared memory segment \"/PostgreSQL.1033939608\" to 2097152 bytes: No space left on device"
+        },
+        {
+          "code": "P2010",
+          "sqlState": "53100",
+          "message": "could not resize shared memory segment \"/PostgreSQL.1101549532\" to 2097152 bytes: No space left on device"
+        },
+        {
+          "code": "P2010",
+          "sqlState": "53100",
+          "message": "could not resize shared memory segment \"/PostgreSQL.3888322444\" to 4194304 bytes: No space left on device"
+        },
+        {
+          "code": "P2010",
+          "sqlState": "53100",
+          "message": "could not resize shared memory segment \"/PostgreSQL.1322797954\" to 4194304 bytes: No space left on device"
+        },
+        {
+          "code": "P2010",
+          "sqlState": "53100",
+          "message": "could not resize shared memory segment \"/PostgreSQL.3194755524\" to 4194304 bytes: No space left on device"
+        },
+        {
+          "code": "P2010",
+          "sqlState": "53100",
+          "message": "could not resize shared memory segment \"/PostgreSQL.3903551692\" to 1048576 bytes: No space left on device"
+        },
+        {
+          "code": "P2010",
+          "sqlState": "53100",
+          "message": "could not resize shared memory segment \"/PostgreSQL.3134780688\" to 1048576 bytes: No space left on device"
+        },
+        {
+          "code": "P2010",
+          "sqlState": "53100",
+          "message": "could not resize shared memory segment \"/PostgreSQL.2737490628\" to 2097152 bytes: No space left on device"
+        },
+        {
+          "code": "P2010",
+          "sqlState": "53100",
+          "message": "could not resize shared memory segment \"/PostgreSQL.3245039804\" to 2097152 bytes: No space left on device"
+        },
+        {
+          "code": "P2010",
+          "sqlState": "53100",
+          "message": "could not resize shared memory segment \"/PostgreSQL.563918062\" to 2097152 bytes: No space left on device"
+        },
+        {
+          "code": "P2010",
+          "sqlState": "53100",
+          "message": "could not resize shared memory segment \"/PostgreSQL.448592402\" to 8388608 bytes: No space left on device"
+        },
+        {
+          "code": "P2010",
+          "sqlState": "53100",
+          "message": "could not resize shared memory segment \"/PostgreSQL.257418872\" to 8388608 bytes: No space left on device"
+        },
+        {
+          "code": "P2010",
+          "sqlState": "53100",
+          "message": "could not resize shared memory segment \"/PostgreSQL.944291890\" to 8388608 bytes: No space left on device"
+        },
+        {
+          "code": "P2010",
+          "sqlState": "53100",
+          "message": "could not resize shared memory segment \"/PostgreSQL.1097751346\" to 2097152 bytes: No space left on device"
+        },
+        {
+          "code": "P2010",
+          "sqlState": "53100",
+          "message": "could not resize shared memory segment \"/PostgreSQL.2856769286\" to 4194304 bytes: No space left on device"
+        },
+        {
+          "code": "P2010",
+          "sqlState": "53100",
+          "message": "could not resize shared memory segment \"/PostgreSQL.3792456578\" to 2097152 bytes: No space left on device"
+        },
+        {
+          "code": "P2010",
+          "sqlState": "53100",
+          "message": "could not resize shared memory segment \"/PostgreSQL.909851454\" to 4194304 bytes: No space left on device"
+        },
+        {
+          "code": "P2010",
+          "sqlState": "53100",
+          "message": "could not resize shared memory segment \"/PostgreSQL.1733740478\" to 4194304 bytes: No space left on device"
+        },
+        {
+          "code": "P2010",
+          "sqlState": "53100",
+          "message": "could not resize shared memory segment \"/PostgreSQL.3716064352\" to 8388608 bytes: No space left on device"
+        },
+        {
+          "code": "P2010",
+          "sqlState": "53100",
+          "message": "could not resize shared memory segment \"/PostgreSQL.1428980916\" to 1048576 bytes: No space left on device"
+        },
+        {
+          "code": "P2010",
+          "sqlState": "53100",
+          "message": "could not resize shared memory segment \"/PostgreSQL.1569415330\" to 2097152 bytes: No space left on device"
+        },
+        {
+          "code": "P2010",
+          "sqlState": "53100",
+          "message": "could not resize shared memory segment \"/PostgreSQL.1533092936\" to 2097152 bytes: No space left on device"
+        },
+        {
+          "code": "P2010",
+          "sqlState": "53100",
+          "message": "could not resize shared memory segment \"/PostgreSQL.345804618\" to 8388608 bytes: No space left on device"
+        },
+        {
+          "code": "P2010",
+          "sqlState": "53100",
+          "message": "could not resize shared memory segment \"/PostgreSQL.3780970260\" to 2097152 bytes: No space left on device"
+        },
+        {
+          "code": "P2010",
+          "sqlState": "53100",
+          "message": "could not resize shared memory segment \"/PostgreSQL.4022809484\" to 2097152 bytes: No space left on device"
+        },
+        {
+          "code": "P2010",
+          "sqlState": "53100",
+          "message": "could not resize shared memory segment \"/PostgreSQL.1508899468\" to 8388608 bytes: No space left on device"
+        },
+        {
+          "code": "P2010",
+          "sqlState": "53100",
+          "message": "could not resize shared memory segment \"/PostgreSQL.2314824022\" to 2097152 bytes: No space left on device"
+        },
+        {
+          "code": "P2010",
+          "sqlState": "53100",
+          "message": "could not resize shared memory segment \"/PostgreSQL.141072270\" to 8388608 bytes: No space left on device"
+        },
+        {
+          "code": "P2010",
+          "sqlState": "53100",
+          "message": "could not resize shared memory segment \"/PostgreSQL.277907096\" to 4194304 bytes: No space left on device"
+        },
+        {
+          "code": "P2010",
+          "sqlState": "53100",
+          "message": "could not resize shared memory segment \"/PostgreSQL.455891846\" to 4194304 bytes: No space left on device"
+        },
+        {
+          "code": "P2010",
+          "sqlState": "53100",
+          "message": "could not resize shared memory segment \"/PostgreSQL.1780058088\" to 4194304 bytes: No space left on device"
+        },
+        {
+          "code": "P2010",
+          "sqlState": "53100",
+          "message": "could not resize shared memory segment \"/PostgreSQL.563539864\" to 4194304 bytes: No space left on device"
+        },
+        {
+          "code": "P2010",
+          "sqlState": "53100",
+          "message": "could not resize shared memory segment \"/PostgreSQL.3278136310\" to 4194304 bytes: No space left on device"
+        },
+        {
+          "code": "P2010",
+          "sqlState": "53100",
+          "message": "could not resize shared memory segment \"/PostgreSQL.1708970\" to 4194304 bytes: No space left on device"
+        },
+        {
+          "code": "P2010",
+          "sqlState": "53100",
+          "message": "could not resize shared memory segment \"/PostgreSQL.4290595470\" to 4194304 bytes: No space left on device"
+        },
+        {
+          "code": "P2010",
+          "sqlState": "53100",
+          "message": "could not resize shared memory segment \"/PostgreSQL.2703036116\" to 2097152 bytes: No space left on device"
+        },
+        {
+          "code": "P2010",
+          "sqlState": "53100",
+          "message": "could not resize shared memory segment \"/PostgreSQL.1143320860\" to 2097152 bytes: No space left on device"
+        },
+        {
+          "code": "P2010",
+          "sqlState": "53100",
+          "message": "could not resize shared memory segment \"/PostgreSQL.2855399116\" to 2097152 bytes: No space left on device"
+        },
+        {
+          "code": "P2010",
+          "sqlState": "53100",
+          "message": "could not resize shared memory segment \"/PostgreSQL.3608377100\" to 2097152 bytes: No space left on device"
+        },
+        {
+          "code": "P2010",
+          "sqlState": "53100",
+          "message": "could not resize shared memory segment \"/PostgreSQL.458075976\" to 2097152 bytes: No space left on device"
+        },
+        {
+          "code": "P2010",
+          "sqlState": "53100",
+          "message": "could not resize shared memory segment \"/PostgreSQL.927865798\" to 4194304 bytes: No space left on device"
+        },
+        {
+          "code": "P2010",
+          "sqlState": "53100",
+          "message": "could not resize shared memory segment \"/PostgreSQL.737041924\" to 4194304 bytes: No space left on device"
+        },
+        {
+          "code": "P2010",
+          "sqlState": "53100",
+          "message": "could not resize shared memory segment \"/PostgreSQL.2674549020\" to 4194304 bytes: No space left on device"
+        },
+        {
+          "code": "P2010",
+          "sqlState": "53100",
+          "message": "could not resize shared memory segment \"/PostgreSQL.3431015244\" to 2097152 bytes: No space left on device"
+        },
+        {
+          "code": "P2010",
+          "sqlState": "53100",
+          "message": "could not resize shared memory segment \"/PostgreSQL.3671924650\" to 4194304 bytes: No space left on device"
+        }
+      ],
+      "durations": [
+        205.70279999999997,
+        206.91610000000003,
+        210.23659999999995,
+        213.1243,
+        216.80470000000003,
+        30.94150000000002,
+        22.552999999999997,
+        36.67590000000007,
+        33.68049999999994,
+        32.14459999999997,
+        251.5462,
+        252.58679999999998,
+        259.7927,
+        56.26319999999998,
+        57.95569999999998,
+        50.84960000000001,
+        59.447599999999966,
+        68.10929999999996,
+        333.25960000000003,
+        26.708500000000072,
+        35.651700000000005,
+        29.823699999999917,
+        337.50890000000004,
+        33.13310000000001,
+        44.176199999999994,
+        140.3934999999999,
+        48.92650000000003,
+        130.81009999999992,
+        83.96910000000003,
+        120.21040000000005,
+        109.72529999999995,
+        113.59360000000004,
+        73.07769999999994,
+        68.83879999999999,
+        104.21320000000003,
+        38.31510000000003,
+        67.47159999999997,
+        39.10559999999998,
+        32.89459999999997,
+        26.907499999999914,
+        100.32130000000006,
+        70.21910000000003,
+        79.15919999999994,
+        39.3614,
+        46.58769999999993,
+        473.0217000000001,
+        633.1433,
+        270.7944,
+        279.26919999999996,
+        275.40729999999985
+      ]
+    },
+    {
+      "parallelWorkers": 0,
+      "ok": 50,
+      "failures": [],
+      "durations": [
+        1448.0369,
+        1448.6788999999999,
+        1454.6586000000002,
+        1465.8109,
+        1487.8632000000002,
+        1604.6556,
+        1677.3264,
+        1693.4119,
+        1697.7246,
+        1700.2295999999997,
+        1187.5875,
+        1230.0819999999999,
+        1279.5850999999998,
+        1311.1287999999995,
+        1298.0922,
+        1489.6525000000001,
+        1266.7429000000002,
+        1372.0106,
+        1463.991,
+        1475.5528000000004,
+        1449.7035999999998,
+        1491.5900999999994,
+        1549.3676999999998,
+        1597.3314,
+        1590.3739999999998,
+        1554.7543999999998,
+        1579.9888,
+        1652.6633000000002,
+        1760.3031,
+        1791.5188000000007,
+        1702.3995000000004,
+        1593.0176000000001,
+        1572.6313,
+        1781.6710000000003,
+        1588.8806000000004,
+        1633.2409000000007,
+        1695.2732999999998,
+        1563.4097000000002,
+        1624.152900000001,
+        1742.8508000000002,
+        1482.8743999999997,
+        1503.4606000000013,
+        1519.4385999999995,
+        1385.4053000000004,
+        1449.6661999999997,
+        1663.6705999999995,
+        1442.2922999999992,
+        1582.1651999999995,
+        1215.3844000000008,
+        1361.901600000001
+      ]
+    }
+  ]
+}

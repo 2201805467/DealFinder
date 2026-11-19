@@ -5,6 +5,7 @@ const text = z.string().min(1).optional().catch(undefined);
 const boolean = z.boolean().optional().catch(undefined);
 const url = z
   .url()
+  .max(2048)
   .refine((value) => /^https?:\/\//i.test(value))
   .optional()
   .catch(undefined);
@@ -28,7 +29,7 @@ const pricesSchema = z.object({
 });
 const schema = z.object({
   id: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
-  name: z.string().trim().min(1),
+  name: z.string().trim().min(1).max(500),
   type: text,
   permalink: url,
   short_description: text,
@@ -58,7 +59,17 @@ export function minorUnitAmount(
     return undefined;
   const units = Number(value);
   if (!Number.isSafeInteger(units)) return undefined;
-  return units / 10 ** minorUnit;
+  const amount = units / 10 ** minorUnit;
+  const exact = BigInt(value)
+    .toString()
+    .padStart(minorUnit + 1, '0');
+  const expected =
+    minorUnit === 0
+      ? exact
+      : exact.slice(0, -minorUnit) + '.' + exact.slice(-minorUnit);
+  // The current StoreProvider contract uses numbers: omit amounts it cannot
+  // represent faithfully instead of silently changing the source's minor units.
+  return amount.toFixed(minorUnit) === expected ? amount : undefined;
 }
 
 export function normalizeWooCommerceProduct(

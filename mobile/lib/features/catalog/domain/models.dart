@@ -3,7 +3,11 @@ class DecimalValue implements Comparable<DecimalValue> {
   DecimalValue._(this.value);
   final String value;
   static DecimalValue? parse(Object? raw) {
-    if (raw is! String || !RegExp(r'^\d+(\.\d+)?$').hasMatch(raw)) return null;
+    if (raw is! String ||
+        raw.length > 40 ||
+        !RegExp(r'^\d+(\.\d+)?$').hasMatch(raw)) {
+      return null;
+    }
     return DecimalValue._(raw);
   }
 
@@ -54,10 +58,14 @@ class Offer {
       description = object(j['product'])['description'] as String?,
       imageUrl = object(j['product'])['imageUrl'] as String?,
       merchant = requiredText(object(j['merchant']), 'name'),
-      current = DecimalValue.parse(j['currentPrice']),
+      current =
+          j['currency'] is String &&
+              RegExp(r'^[A-Z]{3}$').hasMatch(j['currency'] as String)
+          ? DecimalValue.parse(j['currentPrice'])
+          : null,
       reference = DecimalValue.parse(j['referencePrice']),
       discount = DecimalValue.parse(j['discountPercentage']),
-      currency = requiredText(j, 'currency'),
+      currency = j['currency'] as String? ?? '',
       market = j['market'] as String?,
       productUrl = j['productUrl'] as String?,
       affiliateUrl = j['affiliateUrl'] as String?,
@@ -91,13 +99,10 @@ class Offer {
   final List<String> reasons;
   bool get expired => expiresAt != null && !expiresAt!.isAfter(DateTime.now());
   bool get valid =>
-      !expired &&
-      !stale &&
-      current?.positive == true &&
-      availability != 'UNAVAILABLE';
+      !expired && !stale && current != null && availability != 'UNAVAILABLE';
   bool get hasDiscount =>
       trustedReference &&
-      current?.positive == true &&
+      current != null &&
       reference != null &&
       reference!.compareTo(current!) > 0 &&
       discount?.positive == true &&

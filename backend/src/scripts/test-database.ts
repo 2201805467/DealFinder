@@ -14,6 +14,7 @@ try {
     ...process.env,
     NODE_ENV: 'test',
     DATABASE_URL: url,
+    MIGRATION_DATABASE_URL: url,
     CATALOG_INTEGRATION: '1',
   };
   // Run local CLI entry points directly, with no shell interpolation or resets.

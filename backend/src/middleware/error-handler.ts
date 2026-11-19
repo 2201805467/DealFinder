@@ -25,6 +25,30 @@ export const errorHandler: ErrorRequestHandler = (
       .json({ error: { code: error.code, message: error.message } });
     return;
   }
+  const databaseCode =
+    typeof error === 'object' && error !== null && 'code' in error
+      ? error.code
+      : undefined;
+  const record = (v: unknown): Record<string, unknown> =>
+    typeof v === 'object' && v !== null ? (v as Record<string, unknown>) : {};
+  const pgCode = record(
+    record(record(record(error).meta).driverAdapterError).cause,
+  ).code;
+  if (
+    (typeof databaseCode === 'string' &&
+      ['P1001', 'P1002', 'P2024', 'P2028'].includes(databaseCode)) ||
+    (typeof pgCode === 'string' &&
+      ['57014', '53100', '53300', '57P01'].includes(pgCode))
+  ) {
+    response.setHeader('Retry-After', '1');
+    response.status(503).json({
+      error: {
+        code: 'DATABASE_BUSY',
+        message: 'Service is temporarily unavailable. Please retry shortly.',
+      },
+    });
+    return;
+  }
 
   const type =
     typeof error === 'object' && error !== null && 'type' in error

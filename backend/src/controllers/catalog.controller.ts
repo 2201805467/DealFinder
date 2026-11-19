@@ -13,22 +13,43 @@ export function catalogControllers(service: CatalogService) {
     }) as RequestHandler,
     products: (async (req, res) => {
       const query = parseCatalogQuery(req.query);
-      if (query.view !== undefined)
+      if (query.view !== undefined || query.pagination || query.cursor)
         throw new AppError(
           400,
           'INVALID_QUERY',
-          'Deal selections are available on /deals.',
+          'Deal selections and cursor pagination are available on /deals.',
         );
       res.json(await service.products(query));
     }) as RequestHandler,
     product: (async (req, res) => {
-      res.json(await service.product(parseId(req.params.id)));
+      res.json(
+        await service.product(
+          parseId(req.params.id),
+          req.query.offerId === undefined
+            ? undefined
+            : parseId(req.query.offerId),
+        ),
+      );
     }) as RequestHandler,
     categories: (async (req, res) => {
-      res.json(await service.categories(parseCatalogQuery(req.query)));
+      const query = parseCatalogQuery(req.query);
+      if (query.pagination || query.cursor)
+        throw new AppError(
+          400,
+          'INVALID_QUERY',
+          'Cursor pagination is available on /deals only.',
+        );
+      res.json(await service.categories(query));
     }) as RequestHandler,
     merchants: (async (req, res) => {
-      res.json(await service.merchants(parseCatalogQuery(req.query)));
+      const query = parseCatalogQuery(req.query);
+      if (query.pagination || query.cursor)
+        throw new AppError(
+          400,
+          'INVALID_QUERY',
+          'Cursor pagination is available on /deals only.',
+        );
+      res.json(await service.merchants(query));
     }) as RequestHandler,
   };
 }

@@ -20,8 +20,13 @@ try {
   });
   server.on('error', () => {
     logger.error('HTTP server failed to start');
+    void database.$disconnect();
     process.exitCode = 1;
   });
+  server.requestTimeout = 15_000;
+  server.headersTimeout = 10_000;
+  server.keepAliveTimeout = 5_000;
+  server.maxRequestsPerSocket = 1000;
 
   for (const signal of ['SIGINT', 'SIGTERM'] as const) {
     process.once(signal, () => {
@@ -33,7 +38,9 @@ try {
       });
     });
   }
-} catch (error) {
-  logger.error(error instanceof Error ? error.message : 'Startup failed');
+} catch {
+  logger.error(
+    'Startup failed; verify environment, database and scoring configuration',
+  );
   process.exitCode = 1;
 }

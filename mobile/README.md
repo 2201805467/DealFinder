@@ -1,5 +1,29 @@
 # DealFinder Mobile — Phase 5
 
+## اختبار هاتف ARM64 — متابعة المرحلة6.1
+
+لم يُختبر هاتف فعلي في هذه المرحلة، ولم تُحذف ملفات أو تطبيقات أو بيانات محاكي. لبناء Debug لهاتفAndroid يدعمARM64 من `mobile`:
+
+```bash
+flutter build apk --debug --target-platform android-arm64 \
+  --dart-define=API_BASE_URL=http://YOUR_COMPUTER_LAN_IP:3000/api/v1 \
+  --dart-define=DEMO_MODE=true
+adb devices
+adb -s DEVICE_SERIAL install -r build/app/outputs/flutter-apk/app-debug.apk
+```
+
+استبدل العنوان بـLAN الفعلي للجهاز، واجعل الهاتف والحاسوب على شبكة اختبار موثوقة واحدة. localhost على الهاتف لا يشير إلى الحاسوب، و10.0.2.2 مخصص لمحاكيAndroid. يتطلب وصولLAN استماع Backend للعنوان المناسب والسماح المحلي المراجع بالمنفذ؛ لا تغير إعدادات الشبكة أوتنشر الخدمة تلقائيًا. Debug يعرض البيانات الاصطناعية موسومة، وزر الشراء منها معطل.
+
+لبناء Release لاحقًا مع Backend مصرح عبرHTTPS:
+
+```bash
+flutter build apk --release --target-platform android-arm64 \
+  --dart-define=API_BASE_URL=https://YOUR_AUTHORIZED_BACKEND/api/v1 \
+  --dart-define=DEMO_MODE=false
+```
+
+Release يستبعد synthetic مهما كانت قيمة Demo؛ غياب مصدر تجاري يؤدي لقائمة فارغة صحيحة. لا تضع مفاتيح متاجر أوDB داخل dart-define. توقيع القالب الحالي debug للتحقق المحلي؛ لا تنشره كتوقيع إنتاج. هذه تعليمات مجهزة فقط؛ لم يُبنَ ARM64 أو يُثبّت على هاتف في المرحلة6.1. الواجهات الحالية تستخدم offset pagination دون تغيير؛ cursor الجديد اختياري لعملاءAPI فقط.
+
 تطبيق Flutter مستقل يتصل بـBackend الموجود. الواجهة الافتراضية إنجليزية، وتستخدم Material 3 وRiverpod وDio وGoRouter. البيانات المتاحة حاليًا **اصطناعية فقط**؛ لا يوجد مصدر تجاري معتمد ولا عمليات شراء داخل التطبيق.
 
 ## المتطلبات
@@ -124,7 +148,7 @@ flutter build apk --debug --dart-define=API_BASE_URL=http://10.0.2.2:3000/api/v1
 
 اختبار HTTP الفعلي منفصل ومقصود، ويتطلب Backend وبيانات اصطناعية حديثة. لا تعتمد اختبارات الوحدة والواجهات على الإنترنت أو PostgreSQL؛ تستخدم استجابات Mock واضحة داخل `test` فقط. يكتب الاختبار الحي تقريره في `docs/live-backend-check.json`. ملف APK الناتج: `build/app/outputs/flutter-apk/app-debug.apk`، وهو Debug تجريبي كبير الحجم ولا يصلح للنشر كنسخة متجر.
 
-النتائج الفعلية والقيود التشغيلية النهائية موثقة في [PROGRESS.md](../PROGRESS.md). لم تبدأ المرحلة السادسة.
+النتائج الفعلية والقيود التشغيلية موثقة في [PROGRESS.md](../PROGRESS.md). اكتملت مراجعة المرحلة السادسة كما يوضح [تقرير الجودة](../docs/QA_REPORT.md)، دون الانتقال للمرحلة السابعة.
 
 ## صور التطبيق الفعلية
 
@@ -135,3 +159,29 @@ flutter build apk --debug --dart-define=API_BASE_URL=http://10.0.2.2:3000/api/v1
 - [تفاصيل المنتج](docs/screenshots/details.png)
 - [تفاصيل التقييم والشحن المجهول وزر الشراء المعطل](docs/screenshots/details-score.png)
 - [Settings وDark Mode](docs/screenshots/settings-dark.png)
+
+## معالجة INSTALL_FAILED_INSUFFICIENT_STORAGE
+
+نجاح البناء لا يضمن وجود مساحة كافية للتثبيت داخل Android: يلزم هامش لفك الحزمة والمكتبات بالإضافة إلى حجم APK. افحص الجهازين بصورة مستقلة:
+
+```powershell
+adb -s emulator-5554 shell df -h /data
+Get-PSDrive C
+```
+
+في متابعة 2026-11-18 كان المحاكي ممتلئًا 93% والمتاح نحو 461MB فقط، والمضيف نحو 1GB. لم يكف تنظيف كاش Android لتثبيت APK المتعدد المعماريات (162MB). **نجح بناء وتثبيت APK مخصص لـx86_64 بحجم نحو 78MB وتشغيل التطبيق**، دون حذف بيانات التطبيقات أو مسح AVD. يظل توفير مساحة إضافية مفيدًا للبناء المتكرر.
+
+بعد توفير مساحة مناسبة، يمكن تقليل APK للمحاكي x86_64 فقط، ثم إعادة التثبيت:
+
+```powershell
+flutter build apk --debug --target-platform android-x64 --dart-define=API_BASE_URL=http://10.0.2.2:3000/api/v1
+adb -s emulator-5554 install -r -t build/app/outputs/flutter-apk/app-debug.apk
+```
+
+هذه النسخة مخصصة لمحاكي x86_64، وليست لهاتف ARM. نتيجة التثبيت المذكورة تخص المتابعة السابقة. في المرحلة السادسة أُعيد بناء Debug وRelease بنجاح، لكن تعذر إقلاع المحاكي بسبب مساحة القرص ولم يُختبر تثبيت الحزمتين الجديدتين. لتشغيل حزمة جاهزة بعد توفير المساحة:
+
+```powershell
+flutter run -d emulator-5554 --use-application-binary=build/app/outputs/flutter-apk/app-debug.apk
+```
+
+عنوان Backend مدمج وقت بناء هذه الحزمة؛ لتغييره أو لتغيير الكود أعد بناء النسخة المخصصة بالأمر أعلاه. أُوقفت المحاولة الأولى احترازيًا بعد قراءة غير متاحة لمساحة المضيف داخل البيئة المقيدة؛ صحح الفحص المباشر القراءة، ثم نجح البناء. مخرجات البناء الوسيطة قابلة لإعادة التوليد؛ التفاصيل في PROGRESS.md.

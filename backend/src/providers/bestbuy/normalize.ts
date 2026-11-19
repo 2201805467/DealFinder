@@ -11,13 +11,14 @@ const optionalPrice = z
 const optionalBoolean = z.boolean().optional().catch(undefined);
 const optionalUrl = z
   .url()
+  .max(2048)
   .refine((value) => /^https?:\/\//i.test(value))
   .optional()
   .catch(undefined);
 
 const productSchema = z.object({
   sku: z.number().int().positive(),
-  name: z.string().min(1),
+  name: z.string().min(1).max(500),
   shortDescription: optionalText,
   image: optionalUrl,
   url: optionalUrl,

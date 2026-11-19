@@ -7,6 +7,7 @@ import type {
   StoreProvider,
 } from '../store-provider.js';
 import { normalizeBestBuyProduct } from './normalize.js';
+import { boundedProviderJson, safeStoreFetch } from '../safe-http.js';
 
 const searchSchema = z
   .object({
@@ -65,7 +66,7 @@ export class BestBuyProvider implements StoreProvider {
     }
     this.#apiKey = options.apiKey.trim();
     this.#timeoutMs = timeoutMs;
-    this.#fetch = options.fetch ?? globalThis.fetch;
+    this.#fetch = options.fetch ?? safeStoreFetch();
   }
 
   async searchProducts(
@@ -109,7 +110,12 @@ export class BestBuyProvider implements StoreProvider {
     });
     await previous;
     try {
-      await sleep(Math.max(0, this.#nextRequestAt - Date.now()));
+      context?.signal?.throwIfAborted();
+      await sleep(
+        Math.max(0, this.#nextRequestAt - Date.now()),
+        undefined,
+        context?.signal ? { signal: context.signal } : {},
+      );
       if (Date.now() < this.#blockedUntil) {
         throw new ProviderError(
           'RATE_LIMIT',
@@ -166,7 +172,7 @@ export class BestBuyProvider implements StoreProvider {
       }
       let payload: unknown;
       try {
-        payload = await response.json();
+        payload = await boundedProviderJson(response, signal);
       } catch {
         if (signal.aborted)
           throw new ProviderError('TIMEOUT', 'Best Buy request timed out.');

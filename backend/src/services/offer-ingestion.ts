@@ -1,10 +1,25 @@
 import { z } from 'zod';
-import type { PrismaClient } from '../generated/prisma/client.js';
+import { Prisma, type PrismaClient } from '../generated/prisma/client.js';
 import type { StoreProduct } from '../providers/store-provider.js';
 import { AppError } from '../utils/app-error.js';
 import { calculatedDiscount, exactMoney } from './money.js';
 
-const httpUrl = z.url().refine((value) => /^https?:\/\//i.test(value));
+const httpUrl = z
+  .url()
+  .max(2048)
+  .refine((value) => {
+    let url: URL;
+    try {
+      url = new URL(value);
+    } catch {
+      return false;
+    }
+    return (
+      ['http:', 'https:'].includes(url.protocol) &&
+      !url.username &&
+      !url.password
+    );
+  });
 const inputSchema = z.object({
   externalId: z.string().trim().min(1).max(200),
   store: z.string().min(1),
@@ -59,6 +74,8 @@ export class OfferIngestionService {
       syncRunId: string;
       signal?: AbortSignal;
       syntheticOnly?: boolean;
+      checkpoint?: Prisma.InputJsonValue | null;
+      generation?: number;
     },
   ) {
     context?.signal?.throwIfAborted();
@@ -191,6 +208,8 @@ export class OfferIngestionService {
             !currentPolicy ||
             !currentPolicy.enabled ||
             !currentPolicy.storageAuthorized ||
+            (context?.generation !== undefined &&
+              currentPolicy.syncGeneration !== context.generation) ||
             currentPolicy.retentionSeconds !== run.retentionSeconds ||
             currentPolicy.allowIndefiniteRetention !==
               run.allowIndefiniteRetention ||
@@ -329,6 +348,12 @@ export class OfferIngestionService {
             ids.push(saved.id);
           }
           context?.signal?.throwIfAborted();
+          if (context && context.checkpoint !== undefined) {
+            await tx.merchant.update({
+              where: { id: merchantId },
+              data: { syncCheckpoint: context.checkpoint ?? Prisma.DbNull },
+            });
+          }
           await tx.syncRun.update({
             where: { id: sync.id },
             data: context

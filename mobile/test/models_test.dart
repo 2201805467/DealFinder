@@ -5,6 +5,23 @@ import 'package:dealfinder_mobile/features/catalog/presentation/detail_screen.da
 import 'support.dart';
 
 void main() {
+  test(
+    'QA: zero prices remain exact and missing currency never invents a price',
+    () {
+      final zero = Offer.fromJson({
+        ...fixture(price: '0'),
+        'referencePrice': '10',
+        'discountPercentage': '100',
+      });
+      expect(zero.valid, isTrue);
+      expect(zero.hasDiscount, isTrue);
+      expect(zero.current!.format('USD'), 'USD 0.00');
+      final missing = Offer.fromJson(fixture()..remove('currency'));
+      expect(missing.current, isNull);
+      expect(missing.valid, isFalse);
+      expect(DecimalValue.parse('1' * 10000), isNull);
+    },
+  );
   test('Decimal strings retain cents and arbitrarily large integers', () {
     expect(
       DecimalValue.parse('12345678901234567890.001')!.format('LYD'),

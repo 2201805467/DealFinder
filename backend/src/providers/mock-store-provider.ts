@@ -7,6 +7,8 @@ import type {
 
 // Never registered in production. No network access or externally sourced content.
 export class MockStoreProvider implements StoreProvider {
+  readonly checkpointVersion = 'mock-v1';
+  readonly stablePagination = true;
   constructor(readonly name: string) {}
   async searchProducts(
     search: ProductSearch = {},

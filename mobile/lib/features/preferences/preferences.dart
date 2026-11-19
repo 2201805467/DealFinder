@@ -32,23 +32,27 @@ class SettingsController extends Notifier<UserSettings> {
   @override
   UserSettings build() {
     final prefs = ref.watch(preferencesProvider);
-    final currency = prefs.getString('currency') ?? 'USD';
-    final market = prefs.getString('market') ?? '';
+    final currency = prefs.get('currency') is String
+        ? prefs.getString('currency')!
+        : 'USD';
+    final market = prefs.get('market') is String
+        ? prefs.getString('market')!
+        : '';
     return UserSettings(
       currency: RegExp(r'^[A-Z]{3}$').hasMatch(currency) ? currency : 'USD',
       market: RegExp(r'^[A-Z]{2}$').hasMatch(market) ? market : '',
       theme:
           ThemeMode.values
-              .where((v) => v.name == prefs.getString('theme'))
+              .where((v) => v.name == prefs.get('theme'))
               .firstOrNull ??
           ThemeMode.system,
     );
   }
 
   Future<void> update(UserSettings value) {
+    final prefs = ref.read(preferencesProvider);
     state = value;
     return _writes = _writes.catchError((Object _) {}).then((_) async {
-      final prefs = ref.read(preferencesProvider);
       if (!await prefs.setString('currency', value.currency) ||
           !await prefs.setString('market', value.market) ||
           !await prefs.setString('theme', value.theme.name)) {
@@ -70,12 +74,14 @@ class LocalFavoritesRepository implements FavoritesRepository {
   final SharedPreferences prefs;
   @override
   List<FavoriteId> read() {
-    final rows = prefs.getStringList('favorite_ids') ?? [];
+    final raw = prefs.get('favorite_ids');
+    final rows = raw is List ? raw.whereType<String>() : <String>[];
     final result = <FavoriteId>[];
+    final seen = <String>{};
     for (final row in rows) {
       try {
         final j = jsonDecode(row) as Map<String, dynamic>;
-        if (j['id'] is String && !result.any((v) => v.id == j['id'])) {
+        if (j['id'] is String && seen.add(j['id'] as String)) {
           result.add((
             id: j['id'] as String,
             productId: j['productId'] as String?,
@@ -114,12 +120,13 @@ class FavoritesController extends Notifier<List<FavoriteId>> {
   @override
   List<FavoriteId> build() => ref.watch(favoritesRepositoryProvider).read();
   Future<void> toggle(FavoriteId id) {
+    final repository = ref.read(favoritesRepositoryProvider);
     final next = state.any((v) => v.id == id.id)
         ? state.where((v) => v.id != id.id).toList()
         : [...state, id];
     state = next;
     return _writes = _writes
         .catchError((Object _) {})
-        .then((_) => ref.read(favoritesRepositoryProvider).save(next));
+        .then((_) => repository.save(next));
   }
 }

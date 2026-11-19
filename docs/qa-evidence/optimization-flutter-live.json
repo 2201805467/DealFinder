@@ -1,0 +1,12 @@
+{
+  "platform": "Windows headless Flutter debug test, NOT phone/profile FPS",
+  "startedAt": "2026-11-19T09:01:19.268862Z",
+  "homeWallMs": 2397,
+  "tenScrollPumpsWallMs": 3229,
+  "mountedCardsBeforeScroll": 4,
+  "mountedCardsAfterScroll": 8,
+  "loadedOffers": 200,
+  "initialRSSBytes": 194437120,
+  "finalRSSBytes": 331710464,
+  "elapsedWallMs": 12372
+}

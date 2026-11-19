@@ -24,6 +24,77 @@ Future<ProviderContainer> containerFor(CatalogRepository repo) async {
 Future<void> tick() => Future<void>.delayed(const Duration(milliseconds: 30));
 void main() {
   test(
+    'QA: a large catalogue cannot grow the resident list without bound',
+    () async {
+      var calls = 0;
+      final c = await containerFor(
+        repository((o) {
+          calls++;
+          final p = o.queryParameters['page'] as int;
+          return response(
+            envelope(
+              List.generate(20, (i) => fixture(id: '${(p - 1) * 20 + i}')),
+              page: p,
+              pages: 100,
+            ),
+          );
+        }),
+      );
+      final control = c.read(exploreProvider.notifier);
+      for (var i = 0; i < 100 && c.read(exploreProvider).page == 0; i++) {
+        await tick();
+      }
+      expect(c.read(exploreProvider).error, isNull);
+      for (var i = 0; i < 60 && c.read(exploreProvider).hasMore; i++) {
+        await control.load();
+      }
+      expect(c.read(exploreProvider).items.length, 1000);
+      expect(c.read(exploreProvider).limited, isTrue);
+      expect(calls, 50);
+      await control.load();
+      expect(calls, 50);
+      await control.select(const CatalogQuery(search: 'new'));
+      expect(c.read(exploreProvider).items.length, 20);
+      expect(c.read(exploreProvider).limited, isFalse);
+      c.dispose();
+    },
+  );
+  test(
+    'QA: corrupt preference types fall back safely without startup exceptions',
+    () async {
+      SharedPreferences.setMockInitialValues({
+        'currency': 42,
+        'market': true,
+        'theme': 7,
+        'favorite_ids': 'not a list',
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final c = ProviderContainer(
+        overrides: [preferencesProvider.overrideWithValue(prefs)],
+      );
+      expect(c.read(settingsProvider).currency, 'USD');
+      expect(c.read(settingsProvider).market, '');
+      expect(c.read(favoritesProvider), isEmpty);
+      c.dispose();
+    },
+  );
+  test(
+    'QA: immediate controller disposal leaves no queued request touching a disposed provider',
+    () async {
+      var calls = 0;
+      final c = await containerFor(
+        repository((o) {
+          calls++;
+          return response(envelope([]));
+        }),
+      );
+      c.read(exploreProvider);
+      c.dispose();
+      await tick();
+      expect(calls, 0);
+    },
+  );
+  test(
     'Favorites store only identifiers, deduplicate and survive restart',
     () async {
       SharedPreferences.setMockInitialValues({});

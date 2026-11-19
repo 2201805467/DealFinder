@@ -1,0 +1,68 @@
+{
+  "checkedAt": "2026-11-19T08:51:32.545Z",
+  "http": [
+    {
+      "path": "/deals",
+      "status": 200,
+      "items": 0,
+      "nosniff": "nosniff"
+    },
+    {
+      "path": "/deals?view=top",
+      "status": 200,
+      "items": 0,
+      "nosniff": "nosniff"
+    },
+    {
+      "path": "/deals?pagination=cursor&sort=newest",
+      "status": 200,
+      "items": 0,
+      "nosniff": "nosniff"
+    },
+    {
+      "path": "/products",
+      "status": 200,
+      "items": 0,
+      "nosniff": "nosniff"
+    },
+    {
+      "path": "/categories",
+      "status": 200,
+      "items": 0,
+      "nosniff": "nosniff"
+    },
+    {
+      "path": "/merchants",
+      "status": 200,
+      "items": 0,
+      "nosniff": "nosniff"
+    }
+  ],
+  "guards": [
+    {
+      "script": "worker",
+      "exitCode": 1
+    },
+    {
+      "script": "seed",
+      "exitCode": 1
+    },
+    {
+      "script": "seed-worker",
+      "exitCode": 1
+    }
+  ],
+  "syntheticOffersUnchanged": 100000,
+  "database": [
+    {
+      "superuser": true,
+      "connection_tls": false,
+      "parallel_workers": "0"
+    }
+  ],
+  "trackedSensitiveFiles": [],
+  "developmentCounts": {
+    "products": 19,
+    "offers": 16
+  }
+}

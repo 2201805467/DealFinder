@@ -69,6 +69,59 @@ Future<ProviderContainer> mount(
 }
 
 void main() {
+  appTest('QA: large text remains usable on all five narrow screens', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 1000);
+    tester.view.devicePixelRatio = 1;
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    final c = await mount(tester);
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.text('Explore'));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.text('Settings'));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    await c.read(favoritesProvider.notifier).toggle((
+      id: 'offer-1',
+      productId: 'product-offer-1',
+    ));
+    await tester.tap(find.text('Favorites'));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    c.read(routerProvider).push('/deals/offer-1?productId=product-offer-1');
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('View Deal'),
+      300,
+      scrollable: find.byType(Scrollable).last,
+    );
+    expect(tester.takeException(), isNull);
+  });
+  appTest(
+    'QA: navigation and action controls have accessible labels and tap targets',
+    (tester) async {
+      final semantics = tester.ensureSemantics();
+      try {
+        await mount(tester);
+        await tester.pumpAndSettle();
+        await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
+        await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+        await tester.tap(find.text('Explore'));
+        await tester.pumpAndSettle();
+        await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
+        // Flutter SearchBar's inner text-field semantics is only 24 px high,
+        // although its outer target is 56 px. Keep this known SDK limitation in QA_REPORT.
+      } finally {
+        semantics.dispose();
+      }
+    },
+  );
   appTest('Home renders API cards and an explicit demo notice', (tester) async {
     await mount(tester);
     await tester.pumpAndSettle();

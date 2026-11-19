@@ -90,22 +90,25 @@ class PriceLabel extends StatelessWidget {
   const PriceLabel(this.offer, {super.key, this.large = false});
   final Offer offer;
   final bool large;
+  Widget currentText(BuildContext context) => Text(
+    offer.current?.format(offer.currency) ?? 'Price unavailable',
+    style:
+        (large
+                ? Theme.of(context).textTheme.headlineMedium
+                : Theme.of(context).textTheme.titleLarge)
+            ?.copyWith(fontWeight: FontWeight.w800),
+  );
   @override
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      FittedBox(
-        fit: BoxFit.scaleDown,
-        alignment: AlignmentDirectional.centerStart,
-        child: Text(
-          offer.current?.format(offer.currency) ?? 'Price unavailable',
-          style:
-              (large
-                      ? Theme.of(context).textTheme.headlineMedium
-                      : Theme.of(context).textTheme.titleLarge)
-                  ?.copyWith(fontWeight: FontWeight.w800),
-        ),
-      ),
+      MediaQuery.textScalerOf(context).scale(14) > 18
+          ? currentText(context)
+          : FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: AlignmentDirectional.centerStart,
+              child: currentText(context),
+            ),
       if (offer.hasDiscount)
         Wrap(
           spacing: 8,

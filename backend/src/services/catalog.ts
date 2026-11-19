@@ -1,5 +1,6 @@
 import { Prisma, type PrismaClient } from '../generated/prisma/client.js';
 import { AppError } from '../utils/app-error.js';
+import { decodeCatalogCursor, encodeCatalogCursor } from './catalog-cursor.js';
 import type { CatalogQuery } from './catalog-query.js';
 import {
   dealScoreSql,
@@ -71,6 +72,8 @@ export class CatalogService {
     private readonly db: PrismaClient,
     private readonly includeSynthetic = false,
     private readonly rules: ScoringRules = defaultScoringRules,
+    private readonly scoringSql: typeof dealScoreSql = dealScoreSql,
+    private readonly transactionMaxWaitMs = 2000,
   ) {}
 
   private merchantWhere(): Prisma.MerchantWhereInput {
@@ -176,11 +179,9 @@ export class CatalogService {
       clauses.push(
         Prisma.sql`o.reference_price_trusted AND o.discount_percentage > 0 AND o.reference_price > o.current_price AND o.reference_price > 0`,
       );
-    const score = dealScoreSql(now, this.rules);
+    const score = this.scoringSql(now, this.rules, true);
     if (query.view === 'top')
-      clauses.push(
-        Prisma.sql`o.availability = 'AVAILABLE' AND (${score}) >= ${this.rules.topThreshold}`,
-      );
+      clauses.push(Prisma.sql`o.availability = 'AVAILABLE'`);
     const order =
       query.sort === 'score_desc'
         ? Prisma.sql`(${score}) DESC`
@@ -192,14 +193,60 @@ export class CatalogService {
               ? Prisma.sql`o.discount_percentage DESC NULLS LAST`
               : Prisma.sql`o.last_updated_at DESC`;
     const from = Prisma.sql`FROM offers o JOIN products p ON p.id=o.product_id JOIN merchants m ON m.id=o.merchant_id JOIN merchants cm ON cm.id=p.content_merchant_id WHERE ${Prisma.join(clauses, ' AND ')}`;
+    if (query.pagination === 'cursor')
+      return this.cursorDeals(query, now, from);
+    const needsScore = query.view === 'top' || query.sort === 'score_desc';
+    // Carry only the requested sort field through the count/rank CTE.
+    const sortFields =
+      query.sort === 'price_asc' || query.sort === 'price_desc'
+        ? Prisma.sql`,o.current_price`
+        : query.sort === 'discount_desc'
+          ? Prisma.sql`,o.discount_percentage`
+          : query.sort === 'newest'
+            ? Prisma.sql`,o.last_updated_at`
+            : Prisma.empty;
+    const scoredFrom = Prisma.sql`WITH scored AS MATERIALIZED (SELECT o.id${sortFields},${score} AS score ${from})`;
+    const scoredFilter =
+      query.view === 'top'
+        ? Prisma.sql`WHERE score >= ${this.rules.topThreshold}`
+        : Prisma.empty;
+    const scoredOrder =
+      query.sort === 'score_desc'
+        ? Prisma.sql`score DESC`
+        : query.sort === 'price_asc'
+          ? Prisma.sql`current_price ASC`
+          : query.sort === 'price_desc'
+            ? Prisma.sql`current_price DESC`
+            : query.sort === 'discount_desc'
+              ? Prisma.sql`discount_percentage DESC NULLS LAST`
+              : Prisma.sql`last_updated_at DESC`;
     return this.db.$transaction(
       async (tx) => {
-        const counts = await tx.$queryRaw<{ total: bigint }[]>(
-          Prisma.sql`SELECT count(*) AS total ${from}`,
-        );
-        const ids = await tx.$queryRaw<{ id: string }[]>(
-          Prisma.sql`SELECT o.id ${from} ORDER BY ${order}, o.id ASC LIMIT ${query.pageSize} OFFSET ${(query.page - 1) * query.pageSize}`,
-        );
+        let total: number;
+        let ids: { id: string }[];
+        if (needsScore) {
+          const ranked = await tx.$queryRaw<{ id: string; total: bigint }[]>(
+            Prisma.sql`${scoredFrom} SELECT id,count(*) OVER() AS total FROM scored ${scoredFilter} ORDER BY ${scoredOrder},id ASC LIMIT ${query.pageSize} OFFSET ${(query.page - 1) * query.pageSize}`,
+          );
+          ids = ranked;
+          total = ranked.length
+            ? Number(ranked[0]!.total)
+            : Number(
+                (
+                  await tx.$queryRaw<{ total: bigint }[]>(
+                    Prisma.sql`${scoredFrom} SELECT count(*) AS total FROM scored ${scoredFilter}`,
+                  )
+                )[0]!.total,
+              );
+        } else {
+          const counts = await tx.$queryRaw<{ total: bigint }[]>(
+            Prisma.sql`SELECT count(*) AS total ${from}`,
+          );
+          total = Number(counts[0]!.total);
+          ids = await tx.$queryRaw<{ id: string }[]>(
+            Prisma.sql`SELECT o.id ${from} ORDER BY ${order}, o.id ASC LIMIT ${query.pageSize} OFFSET ${(query.page - 1) * query.pageSize}`,
+          );
+        }
         const rows = await tx.offer.findMany({
           where: { id: { in: ids.map((row) => row.id) } },
           include: offerInclude,
@@ -207,11 +254,11 @@ export class CatalogService {
         const byId = new Map(rows.map((row) => [row.id, row]));
         return {
           data: ids.map(({ id }) => offerDto(byId.get(id)!, now, this.rules)),
-          pagination: this.page(query, Number(counts[0]!.total)),
+          pagination: this.page(query, total),
           selection: query.view ?? 'discounted',
         };
       },
-      { isolationLevel: 'RepeatableRead' },
+      { isolationLevel: 'RepeatableRead', maxWait: this.transactionMaxWaitMs },
     );
   }
   async deal(id: string) {
@@ -224,6 +271,52 @@ export class CatalogService {
     if (!offer) throw new AppError(404, 'NOT_FOUND', 'Deal not found.');
     return { data: offerDto(offer, now, this.rules) };
   }
+  private async cursorDeals(query: CatalogQuery, now: Date, from: Prisma.Sql) {
+    const cursor = decodeCatalogCursor(query.cursor, query, now);
+    const startedAt = cursor ? new Date(cursor.startedAt) : now;
+    // Separate the two disjoint key ranges: an OR can scan most of the index
+    // when many products have the same timestamp. Both branches remain bounded.
+    const boundary = cursor ? new Date(cursor.lastUpdatedAt) : undefined;
+    const pageIds = cursor
+      ? Prisma.sql`
+      (SELECT o.id,o.last_updated_at ${from} AND o.last_updated_at<=${startedAt}
+       AND o.last_updated_at=${boundary} AND o.id>${cursor.id}::uuid
+       ORDER BY o.id ASC LIMIT ${query.pageSize + 1})
+      UNION ALL
+      (SELECT o.id,o.last_updated_at ${from} AND o.last_updated_at<=${startedAt}
+       AND o.last_updated_at<${boundary}
+       ORDER BY o.last_updated_at DESC,o.id ASC LIMIT ${query.pageSize + 1})
+      ORDER BY last_updated_at DESC,id ASC LIMIT ${query.pageSize + 1}`
+      : Prisma.sql`SELECT o.id,o.last_updated_at ${from} AND o.last_updated_at<=${startedAt} ORDER BY o.last_updated_at DESC,o.id ASC LIMIT ${query.pageSize + 1}`;
+    return this.db.$transaction(
+      async (tx) => {
+        const ids =
+          await tx.$queryRaw<{ id: string; last_updated_at: Date }[]>(pageIds);
+        const hasMore = ids.length > query.pageSize,
+          page = ids.slice(0, query.pageSize);
+        const rows = await tx.offer.findMany({
+          where: { id: { in: page.map((v) => v.id) } },
+          include: offerInclude,
+        });
+        const map = new Map(rows.map((v) => [v.id, v]));
+        return {
+          data: page.map((v) => offerDto(map.get(v.id)!, now, this.rules)),
+          selection: query.view ?? 'discounted',
+          pagination: {
+            page: 1,
+            pageSize: query.pageSize,
+            total: null,
+            totalPages: null,
+            hasMore,
+            nextCursor: hasMore
+              ? encodeCatalogCursor(query, startedAt, page.at(-1)!)
+              : null,
+          },
+        };
+      },
+      { isolationLevel: 'RepeatableRead', maxWait: this.transactionMaxWaitMs },
+    );
+  }
   private sqlFilters(query: CatalogQuery, now: Date): Prisma.Sql[] {
     const clauses = [
       Prisma.sql`(o.expires_at IS NULL OR o.expires_at > ${now})`,
@@ -235,7 +328,9 @@ export class CatalogService {
         Prisma.sql`NOT p.is_synthetic AND NOT o.is_synthetic AND NOT m.is_synthetic AND NOT cm.is_synthetic`,
       );
     if (query.q)
-      clauses.push(Prisma.sql`strpos(lower(p.name), lower(${query.q})) > 0`);
+      clauses.push(
+        Prisma.sql`lower(p.name) LIKE ${'%' + query.q.toLowerCase().replace(/[\\%_]/g, '\\$&') + '%'}`,
+      );
     if (query.categoryId)
       clauses.push(Prisma.sql`p.category_id=${query.categoryId}::uuid`);
     if (query.merchantId)
@@ -258,7 +353,7 @@ export class CatalogService {
       clauses.push(Prisma.sql`o.current_price IS NOT NULL`);
     const order =
       query.sort === 'score_desc'
-        ? Prisma.sql`max(${dealScoreSql(now, this.rules)}) DESC`
+        ? Prisma.sql`max(${this.scoringSql(now, this.rules)}) DESC`
         : query.sort === 'price_asc'
           ? Prisma.sql`min(o.current_price) ASC NULLS LAST`
           : query.sort === 'price_desc'
@@ -282,18 +377,22 @@ export class CatalogService {
             ...productSelect,
             category: true,
             offers: {
+              take: 20,
               where: filter,
               include: offerInclude,
               orderBy: this.order(query),
             },
+            _count: { select: { offers: { where: filter } } },
           },
         });
         const map = new Map(rows.map((row) => [row.id, row]));
         return {
           data: ids.map(({ id }) => {
             const row = map.get(id)!;
+            const { _count, ...product } = row;
             return {
-              ...row,
+              ...product,
+              offersTruncated: _count.offers > 20,
               offers: row.offers.map((offer) =>
                 offerDto(offer, now, this.rules),
               ),
@@ -302,32 +401,35 @@ export class CatalogService {
           pagination: this.page(query, total),
         };
       },
-      { isolationLevel: 'RepeatableRead' },
+      { isolationLevel: 'RepeatableRead', maxWait: this.transactionMaxWaitMs },
     );
   }
-  async product(id: string) {
+  async product(id: string, offerId?: string) {
     const now = new Date();
-    const filter = this.offerWhere(
-      { page: 1, pageSize: 20, sort: 'newest' },
-      now,
-      false,
-    );
+    const filter = {
+      ...this.offerWhere({ page: 1, pageSize: 20, sort: 'newest' }, now, false),
+      ...(offerId ? { id: offerId } : {}),
+    };
     const row = await this.db.product.findFirst({
       where: { id, ...this.productWhere(now), offers: { some: filter } },
       select: {
         ...productSelect,
         category: true,
         offers: {
+          take: 20,
           where: filter,
           include: offerInclude,
           orderBy: [{ lastUpdatedAt: 'desc' }, { id: 'asc' }],
         },
+        _count: { select: { offers: { where: filter } } },
       },
     });
     if (!row) throw new AppError(404, 'NOT_FOUND', 'Product not found.');
+    const { _count, ...product } = row;
     return {
       data: {
-        ...row,
+        ...product,
+        offersTruncated: _count.offers > 20,
         offers: row.offers.map((offer) => offerDto(offer, now, this.rules)),
       },
     };
@@ -344,7 +446,7 @@ export class CatalogService {
         }),
         this.db.category.count({ where }),
       ],
-      { isolationLevel: 'RepeatableRead' },
+      { isolationLevel: 'RepeatableRead', maxWait: this.transactionMaxWaitMs },
     );
     return { data, pagination: this.page(query, total) };
   }
@@ -361,7 +463,7 @@ export class CatalogService {
         }),
         this.db.merchant.count({ where }),
       ],
-      { isolationLevel: 'RepeatableRead' },
+      { isolationLevel: 'RepeatableRead', maxWait: this.transactionMaxWaitMs },
     );
     return { data, pagination: this.page(query, total) };
   }

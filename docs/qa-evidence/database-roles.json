@@ -1,0 +1,93 @@
+{
+  "checkedAt": "2026-11-19T08:51:40.511Z",
+  "database": "dealfinder_permissions_1795078300504_test",
+  "temporaryRoles": [
+    "qa_68f9d6868165_app",
+    "qa_68f9d6868165_migration",
+    "qa_68f9d6868165_admin",
+    "qa_68f9d6868165_app_login",
+    "qa_68f9d6868165_migration_login",
+    "qa_68f9d6868165_admin_login"
+  ],
+  "checks": [
+    {
+      "check": "database/roles.sql",
+      "passed": true
+    },
+    {
+      "check": "database/database-privileges.sql",
+      "passed": true
+    },
+    {
+      "check": "Prisma migrate deploy using non-superuser migration login and role",
+      "passed": true
+    },
+    {
+      "check": "database/application-privileges.sql",
+      "passed": true
+    },
+    {
+      "check": "Actual app login: ingestion, advisory locks, generated factors, catalogue SELECT, UPDATE, DELETE",
+      "passed": true
+    },
+    {
+      "check": "Application denied CREATE DATABASE",
+      "passed": true,
+      "sqlState": "42501"
+    },
+    {
+      "check": "Application denied CREATE ROLE",
+      "passed": true,
+      "sqlState": "42501"
+    },
+    {
+      "check": "Application denied CREATE SCHEMA",
+      "passed": true,
+      "sqlState": "42501"
+    },
+    {
+      "check": "Application denied CREATE TABLE",
+      "passed": true,
+      "sqlState": "42501"
+    },
+    {
+      "check": "Application denied ALTER TABLE",
+      "passed": true,
+      "sqlState": "42501"
+    },
+    {
+      "check": "Application denied TRUNCATE",
+      "passed": true,
+      "sqlState": "42501"
+    },
+    {
+      "check": "Application denied migration metadata",
+      "passed": true,
+      "sqlState": "42501"
+    },
+    {
+      "check": "Application denied migration escalation",
+      "passed": true,
+      "sqlState": "42501"
+    },
+    {
+      "check": "Actual administrative login can explicitly assume migration role for maintenance",
+      "passed": true
+    }
+  ],
+  "application": {
+    "login": "qa_68f9d6868165_app_login",
+    "rolsuper": false,
+    "rolcreatedb": false,
+    "rolcreaterole": false,
+    "rolreplication": false,
+    "rolbypassrls": false,
+    "schema_create": false,
+    "database_create": false,
+    "temporary_tables": false,
+    "read_server_files": false
+  },
+  "passed": true,
+  "databaseRemoved": true,
+  "temporaryRolesRemoved": true
+}

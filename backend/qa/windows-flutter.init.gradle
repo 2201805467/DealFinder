@@ -1,0 +1,10 @@
+// Scoped to an explicitly invoked QA build, never installed in global Gradle.
+gradle.projectsEvaluated {
+    allprojects {
+        tasks.configureEach { task ->
+            if (task.hasProperty('flutterExecutable')) {
+                task.flutterExecutable = new File(System.getProperty('qa.flutter.wrapper'))
+            }
+        }
+    }
+}

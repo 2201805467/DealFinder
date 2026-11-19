@@ -1,0 +1,57 @@
+{
+  "checkedAt": "2026-11-18T20:47:56.364Z",
+  "migrationExitCode": 0,
+  "deepPagination": [
+    {
+      "page": 1,
+      "offset": 0,
+      "milliseconds": 274.1989000000003,
+      "items": 20,
+      "total": 100000
+    },
+    {
+      "page": 100,
+      "offset": 1980,
+      "milliseconds": 196.34450000000015,
+      "items": 20,
+      "total": 100000
+    },
+    {
+      "page": 1000,
+      "offset": 19980,
+      "milliseconds": 337.4835000000003,
+      "items": 20,
+      "total": 100000
+    },
+    {
+      "page": 5000,
+      "offset": 99980,
+      "milliseconds": 295.0096000000003,
+      "items": 20,
+      "total": 100000
+    }
+  ],
+  "apks": [
+    {
+      "mode": "debug",
+      "bytes": 105394555,
+      "entriesScanned": 542,
+      "configuredSecretValuesChecked": 1,
+      "findings": 0,
+      "utf16findings": 0,
+      "modifiedAt": "2026-11-18T20:44:05.867Z"
+    },
+    {
+      "mode": "release",
+      "bytes": 21721067,
+      "entriesScanned": 366,
+      "configuredSecretValuesChecked": 1,
+      "findings": 0,
+      "utf16findings": 0,
+      "modifiedAt": "2026-11-18T20:45:39.576Z"
+    }
+  ],
+  "products": 100000,
+  "trackedEnvFiles": [],
+  "adbDevices": "List of devices attached"
+}

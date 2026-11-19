@@ -10,33 +10,59 @@ const httpOrigin = z.string().refine((value) => {
   }
 }, 'Use an exact HTTP(S) origin without a trailing slash or path');
 
-const environmentSchema = z.object({
-  NODE_ENV: z
-    .enum(['development', 'test', 'production'])
-    .default('development'),
-  HOST: z.string().trim().min(1).default('127.0.0.1'),
-  PORT: z.coerce.number().int().min(1).max(65535).default(3000),
-  DATABASE_URL: z.url().refine((value) => {
+const environmentSchema = z
+  .object({
+    NODE_ENV: z
+      .enum(['development', 'test', 'production'])
+      .default('development'),
+    HOST: z.string().trim().min(1).default('127.0.0.1'),
+    PORT: z.coerce.number().int().min(1).max(65535).default(3000),
+    API_RATE_LIMIT_MAX: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(1000000)
+      .default(300),
+    DATABASE_URL: z.url().refine((value) => {
+      try {
+        const url = new URL(value);
+        return (
+          ['postgresql:', 'postgres:'].includes(url.protocol) && !!url.hostname
+        );
+      } catch {
+        return false;
+      }
+    }, 'DATABASE_URL must be a PostgreSQL connection URL'),
+    CORS_ORIGINS: z
+      .string()
+      .default('')
+      .transform((value) =>
+        value
+          .split(',')
+          .map((origin) => origin.trim())
+          .filter(Boolean),
+      )
+      .pipe(z.array(httpOrigin)),
+  })
+  .superRefine((value, ctx) => {
+    if (value.NODE_ENV !== 'production') return;
+    let url: URL;
     try {
-      const url = new URL(value);
-      return (
-        ['postgresql:', 'postgres:'].includes(url.protocol) && !!url.hostname
-      );
+      url = new URL(value.DATABASE_URL);
     } catch {
-      return false;
+      return;
     }
-  }, 'DATABASE_URL must be a PostgreSQL connection URL'),
-  CORS_ORIGINS: z
-    .string()
-    .default('')
-    .transform((value) =>
-      value
-        .split(',')
-        .map((origin) => origin.trim())
-        .filter(Boolean),
-    )
-    .pipe(z.array(httpOrigin)),
-});
+    if (
+      !['localhost', '127.0.0.1', '[::1]'].includes(url.hostname) &&
+      url.searchParams.get('sslmode') !== 'verify-full'
+    ) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['DATABASE_URL'],
+        message: 'Remote production database requires verified TLS.',
+      });
+    }
+  });
 
 export type Environment = z.infer<typeof environmentSchema>;
 

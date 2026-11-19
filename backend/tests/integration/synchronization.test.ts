@@ -827,3 +827,270 @@ test('periodic cleanup continues while a provider request is still waiting', asy
     await running;
   }
 });
+
+test('durable checkpoint traverses 2000 fixtures across bounded Worker restarts without starving later pages', async () => {
+  const m = await merchant();
+  let fetched = 0;
+  let lastStatus = '';
+  const provider: StoreProvider = {
+    name: m.name,
+    stablePagination: true,
+    checkpointVersion: 'large-v1',
+    searchProducts: async (search) => {
+      const p = search?.page ?? 1,
+        s = search?.pageSize ?? 100;
+      fetched++;
+      return {
+        products: Array.from(
+          { length: Math.min(s, Math.max(0, 2000 - (p - 1) * s)) },
+          (_, i) => product(m, String((p - 1) * s + i)),
+        ),
+        page: p,
+        total: 2000,
+        totalPages: Math.ceil(2000 / s),
+        skippedCount: 0,
+      };
+    },
+  };
+  let processed = 0;
+  for (let round = 0; round < 20; round++) {
+    const result = await service(provider, {
+      maxProducts: 150,
+      pageSize: 100,
+      maxPages: 20,
+      maxRunMs: 15000,
+      requestTimeoutMs: 1000,
+    }).runSource(m.id, undefined, true);
+    processed += result.processedCount;
+    lastStatus = result.status;
+    if (result.status === 'SUCCEEDED') break;
+    assert.equal(result.errorCode, 'PRODUCT_LIMIT');
+  }
+  assert.equal(lastStatus, 'SUCCEEDED');
+  assert.equal(processed, 2000);
+  assert.equal(await db.offer.count({ where: { merchantId: m.id } }), 2000);
+  assert.ok(fetched < 35);
+  assert.equal(
+    (await db.merchant.findUniqueOrThrow({ where: { id: m.id } }))
+      .syncCheckpoint,
+    null,
+  );
+});
+test('mid-page checkpoint retains page size and offset as product budget changes', async () => {
+  const m = await merchant();
+  const first = await service(new MockStoreProvider(m.name), {
+    maxProducts: 3,
+  }).runSource(m.id, undefined, true);
+  assert.equal(first.processedCount, 3);
+  const saved = (await db.merchant.findUniqueOrThrow({ where: { id: m.id } }))
+    .syncCheckpoint as { page: number; offset: number; pageSize: number };
+  assert.deepEqual(
+    { page: saved.page, offset: saved.offset, pageSize: saved.pageSize },
+    { page: 2, offset: 1, pageSize: 2 },
+  );
+  const next = await service(new MockStoreProvider(m.name), {
+    maxProducts: 1,
+  }).runSource(m.id, undefined, true);
+  assert.equal(next.processedCount, 1);
+  const final = await service(new MockStoreProvider(m.name)).runSource(
+    m.id,
+    undefined,
+    true,
+  );
+  assert.equal(final.processedCount, 1);
+  assert.equal(final.status, 'SUCCEEDED');
+  assert.equal(await db.offer.count({ where: { merchantId: m.id } }), 5);
+});
+test('unstable pagination resumes but never reports multi-run catalogue coverage as complete', async () => {
+  const m = await merchant();
+  const p = fake(m.name, async (search) =>
+    page([product(m, `page-${search?.page}`)], search?.page ?? 1, 2),
+  );
+  await service(p, { maxPages: 1 }).runSource(m.id, undefined, true);
+  const result = await service(p).runSource(m.id, undefined, true);
+  assert.equal(result.status, 'PARTIAL');
+  assert.equal(result.errorCode, 'UNSTABLE_PAGINATION');
+  assert.equal(await db.offer.count({ where: { merchantId: m.id } }), 2);
+});
+test('checkpoint is preserved on a failed page and committed atomically with successful page writes', async () => {
+  const m = await merchant();
+  let fail = true;
+  const p: StoreProvider = {
+    ...fake(m.name, async (search) => {
+      if (search?.page === 2 && fail)
+        throw new ProviderError('ACCESS_OR_QUOTA', 'mock denied');
+      return page([product(m, `page-${search?.page}`)], search?.page ?? 1, 2);
+    }),
+    stablePagination: true,
+    checkpointVersion: 'failure-v1',
+  };
+  const first = await service(p).runSource(m.id, undefined, true);
+  assert.equal(first.status, 'PARTIAL');
+  assert.equal(
+    (
+      (await db.merchant.findUniqueOrThrow({ where: { id: m.id } }))
+        .syncCheckpoint as { page: number }
+    ).page,
+    2,
+  );
+  fail = false;
+  const second = await service(p).runSource(m.id, undefined, true);
+  assert.equal(second.processedCount, 1);
+  assert.equal(second.status, 'SUCCEEDED');
+});
+test('actual process death preserves committed page checkpoint and releases the distributed lock', async () => {
+  const m = await merchant();
+  const code = `import{createDatabaseClient}from'./src/database/client.ts';import{ProductSynchronizationService}from'./src/services/product-synchronization.ts';import{ProviderRegistry}from'./src/services/provider-registry.ts';import{parseWorkerEnvironment}from'./src/config/worker.ts';const db=createDatabaseClient(process.env.DATABASE_URL);const m=await db.merchant.findUniqueOrThrow({where:{id:process.env.QA_MERCHANT_ID}});const provider={name:m.name,stablePagination:true,checkpointVersion:'crash-v1',async searchProducts(s){if(s.page===2)process.exit(9);return {products:[{externalId:'crash-1',store:m.name,name:'SYNTHETIC crash fixture',currentPrice:1,currency:'USD',fetchedAt:new Date().toISOString()}],page:1,total:2,totalPages:2,skippedCount:0};}};await new ProductSynchronizationService(db,new ProviderRegistry([{sourceType:'SYNTHETIC',synthetic:true,create:()=>provider}]),parseWorkerEnvironment({WORKER_ENABLED:'true',WORKER_ALLOW_SYNTHETIC:'true',WORKER_PAGE_SIZE:'1'}),'test').runSource(m.id,undefined,true);`;
+  const child = spawn(
+    process.execPath,
+    ['--import', 'tsx', '--input-type=module', '-e', code],
+    { env: { ...process.env, QA_MERCHANT_ID: m.id }, stdio: 'ignore' },
+  );
+  const [exit] = await once(child, 'exit');
+  assert.equal(exit, 9);
+  const p: StoreProvider = {
+    name: m.name,
+    stablePagination: true,
+    checkpointVersion: 'crash-v1',
+    searchProducts: async (search) => {
+      assert.equal(search?.page, 2);
+      return page([product(m, 'crash-2')], 2, 2);
+    },
+  };
+  const resumed = await service(p).runSource(m.id, undefined, true);
+  assert.equal(resumed.status, 'SUCCEEDED');
+  assert.equal(await db.offer.count({ where: { merchantId: m.id } }), 2);
+  assert.equal(
+    await db.syncRun.count({
+      where: { merchantId: m.id, errorCode: 'WORKER_INTERRUPTED' },
+    }),
+    1,
+  );
+});
+test('loss of the coordinator DB connection rejects fetched data before ingestion and allows recovery', async () => {
+  const m = await merchant();
+  const tag = 'qa-' + randomUUID();
+  const url = new URL(process.env.DATABASE_URL!);
+  url.searchParams.set('application_name', tag);
+  const other = createDatabaseClient(url.href);
+  let release!: () => void;
+  let entered!: () => void;
+  const started = new Promise<void>((r) => {
+    entered = r;
+  });
+  const blocked = fake(m.name, async () => {
+    entered();
+    await new Promise<void>((r) => {
+      release = r;
+    });
+    return page([product(m, 'must-not-save')]);
+  });
+  const running = service(blocked, { requestTimeoutMs: 2000 }, other).runSource(
+    m.id,
+    undefined,
+    true,
+  );
+  await started;
+  try {
+    const killed = await db.$queryRaw<
+      { pg_terminate_backend: boolean }[]
+    >`SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE application_name=${tag} AND datname=current_database() AND state='idle in transaction'`;
+    assert.ok(killed.length > 0);
+    release();
+    const result = await running;
+    assert.notEqual(result.status, 'SUCCEEDED');
+    assert.equal(
+      await db.offer.count({
+        where: { merchantId: m.id, externalProductId: 'must-not-save' },
+      }),
+      0,
+    );
+    assert.equal(
+      (
+        await service(new MockStoreProvider(m.name)).runSource(
+          m.id,
+          undefined,
+          true,
+        )
+      ).status,
+      'SUCCEEDED',
+    );
+  } finally {
+    release();
+    await running.catch(() => {});
+    await other.$disconnect();
+  }
+});
+
+test('an obsolete Worker generation cannot write products or checkpoints', async () => {
+  const m = await merchant();
+  const run = await db.syncRun.create({
+    data: {
+      merchantId: m.id,
+      sourceType: 'SYNTHETIC',
+      scope: 'SYNCHRONIZATION',
+    },
+  });
+  await db.merchant.update({
+    where: { id: m.id },
+    data: { syncGeneration: 2 },
+  });
+  await assert.rejects(
+    new OfferIngestionService(db, 'test').ingest(
+      m.id,
+      [{ product: product(m) }],
+      {
+        syncRunId: run.id,
+        syntheticOnly: true,
+        generation: 1,
+        checkpoint: { page: 999 },
+      },
+    ),
+  );
+  assert.equal(await db.offer.count({ where: { merchantId: m.id } }), 0);
+  assert.equal(
+    (await db.merchant.findUniqueOrThrow({ where: { id: m.id } }))
+      .syncCheckpoint,
+    null,
+  );
+});
+test('a new Worker and manual force cannot bypass persisted Retry-After', async () => {
+  const m = await merchant();
+  let calls = 0;
+  const p = fake(m.name, async () => {
+    calls++;
+    throw new ProviderError('RATE_LIMIT', 'synthetic limit', 3600);
+  });
+  assert.equal(
+    (await service(p).runSource(m.id, undefined, true)).status,
+    'FAILED',
+  );
+  assert.equal(
+    (await service(p).runSource(m.id, undefined, true)).errorCode,
+    'RATE_LIMIT_COOLDOWN',
+  );
+  assert.equal(calls, 1);
+  assert.ok(
+    (await db.merchant.findUniqueOrThrow({ where: { id: m.id } }))
+      .syncNotBefore! > new Date(),
+  );
+});
+test('partial upstream coverage stays incomplete across checkpoint continuation', async () => {
+  const m = await merchant();
+  const p: StoreProvider = {
+    name: m.name,
+    stablePagination: true,
+    checkpointVersion: 'partial-v1',
+    searchProducts: async (search) => ({
+      ...page([product(m, 'item-' + search?.page)], search?.page ?? 1, 2),
+      ...(search?.page === 1 ? { partial: true, skippedCount: 1 } : {}),
+    }),
+  };
+  assert.equal(
+    (await service(p).runSource(m.id, undefined, true)).status,
+    'PARTIAL',
+  );
+  const last = await service(p).runSource(m.id, undefined, true);
+  assert.equal(last.status, 'PARTIAL');
+  assert.equal(last.errorCode, 'INCOMPLETE_CYCLE');
+});

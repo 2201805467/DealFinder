@@ -32,6 +32,8 @@ const schema = z
       ])
       .default('newest'),
     view: z.enum(['discounted', 'top', 'low_price']).optional(),
+    pagination: z.enum(['cursor']).optional(),
+    cursor: z.string().min(1).max(2048).optional(),
   })
   .strict();
 export type CatalogQuery = z.infer<typeof schema>;
@@ -44,6 +46,16 @@ export function parseCatalogQuery(input: unknown): CatalogQuery {
       'Invalid pagination, filters or sort.',
     );
   const result = parsed.data;
+  if (
+    (result.cursor && result.pagination !== 'cursor') ||
+    (result.pagination === 'cursor' &&
+      (result.sort !== 'newest' || result.page !== 1 || result.view === 'top'))
+  )
+    throw new AppError(
+      400,
+      'INVALID_QUERY',
+      'Cursor pagination supports newest discounted/low-price deals with page=1 only.',
+    );
   if (
     result.view === 'low_price' &&
     (!result.currency || result.maxPrice === undefined)

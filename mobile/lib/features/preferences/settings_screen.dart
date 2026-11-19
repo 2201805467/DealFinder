@@ -80,32 +80,62 @@ class SettingsScreen extends ConsumerWidget {
                 const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
-                  child: SegmentedButton<ThemeMode>(
-                    segments: const [
-                      ButtonSegment(
-                        value: ThemeMode.light,
-                        label: Text('Light'),
-                        icon: Icon(Icons.light_mode_outlined),
-                      ),
-                      ButtonSegment(
-                        value: ThemeMode.dark,
-                        label: Text('Dark'),
-                        icon: Icon(Icons.dark_mode_outlined),
-                      ),
-                      ButtonSegment(
-                        value: ThemeMode.system,
-                        label: Text('Auto'),
-                        icon: Icon(Icons.settings_brightness_outlined),
-                      ),
-                    ],
-                    selected: {settings.theme},
-                    onSelectionChanged: (v) => saveFeedback(
-                      context,
-                      ref
-                          .read(settingsProvider.notifier)
-                          .update(settings.copyWith(theme: v.first)),
-                    ),
-                  ),
+                  child: MediaQuery.textScalerOf(context).scale(14) > 18
+                      ? DropdownButtonFormField<ThemeMode>(
+                          initialValue: settings.theme,
+                          isExpanded: true,
+                          decoration: const InputDecoration(labelText: 'Theme'),
+                          items: ThemeMode.values
+                              .map(
+                                (v) => DropdownMenuItem(
+                                  value: v,
+                                  child: Text(
+                                    v == ThemeMode.system
+                                        ? 'Auto'
+                                        : v == ThemeMode.light
+                                        ? 'Light'
+                                        : 'Dark',
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (v) {
+                            if (v != null) {
+                              saveFeedback(
+                                context,
+                                ref
+                                    .read(settingsProvider.notifier)
+                                    .update(settings.copyWith(theme: v)),
+                              );
+                            }
+                          },
+                        )
+                      : SegmentedButton<ThemeMode>(
+                          segments: const [
+                            ButtonSegment(
+                              value: ThemeMode.light,
+                              label: Text('Light'),
+                              icon: Icon(Icons.light_mode_outlined),
+                            ),
+                            ButtonSegment(
+                              value: ThemeMode.dark,
+                              label: Text('Dark'),
+                              icon: Icon(Icons.dark_mode_outlined),
+                            ),
+                            ButtonSegment(
+                              value: ThemeMode.system,
+                              label: Text('Auto'),
+                              icon: Icon(Icons.settings_brightness_outlined),
+                            ),
+                          ],
+                          selected: {settings.theme},
+                          onSelectionChanged: (v) => saveFeedback(
+                            context,
+                            ref
+                                .read(settingsProvider.notifier)
+                                .update(settings.copyWith(theme: v.first)),
+                          ),
+                        ),
                 ),
               ],
             ),

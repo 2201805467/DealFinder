@@ -15,6 +15,29 @@ class CatalogRepository {
   CatalogRepository(this.dio, this.config);
   final Dio dio;
   final AppConfig config;
+  CatalogPage<T> checkedPage<T>(
+    Map<String, dynamic> value,
+    List<T> items,
+    int expectedPage,
+    int pageSize,
+  ) {
+    final p = object(value['pagination']);
+    if (p['page'] != expectedPage ||
+        p['totalPages'] is! int ||
+        p['total'] is! int ||
+        (p['totalPages'] as int) < 0 ||
+        (p['total'] as int) < 0 ||
+        (value['data'] as List).length > pageSize) {
+      throw const FormatException('Invalid pagination');
+    }
+    return CatalogPage(
+      items,
+      expectedPage,
+      p['totalPages'] as int,
+      p['total'] as int,
+    );
+  }
+
   Future<Map<String, dynamic>> get(
     String path, {
     Map<String, dynamic>? query,
@@ -90,13 +113,7 @@ class CatalogRepository {
           .map((v) => Offer.fromJson(object(v)))
           .where(visible)
           .toList();
-      final p = object(j['pagination']);
-      return CatalogPage(
-        data,
-        p['page'] as int,
-        p['totalPages'] as int,
-        p['total'] as int,
-      );
+      return checkedPage(j, data, page, pageSize);
     } on TypeError {
       throw const CatalogException('The server returned an unexpected format.');
     } on FormatException {
@@ -125,6 +142,7 @@ class CatalogRepository {
         final product = object(
           (await get(
             '/products/${Uri.encodeComponent(productId)}',
+            query: {'offerId': id},
             cancel: cancel,
           ))['data'],
         );
@@ -160,15 +178,14 @@ class CatalogRepository {
         query: {'page': page, 'pageSize': 100},
         cancel: cancel,
       );
-      final p = object(j['pagination']);
-      return CatalogPage(
+      return checkedPage(
+        j,
         (j['data'] as List)
             .map((v) => CatalogOption.fromJson(object(v)))
             .where((v) => config.demo || !v.synthetic)
             .toList(),
-        p['page'] as int,
-        p['totalPages'] as int,
-        p['total'] as int,
+        page,
+        100,
       );
     } on TypeError {
       throw const CatalogException('The server returned an unexpected format.');
@@ -218,7 +235,7 @@ final optionsProvider = FutureProvider.autoDispose
       final repository = ref.watch(repositoryProvider);
       final all = <CatalogOption>[];
       var page = 1;
-      while (true) {
+      while (page <= 100) {
         final result = await repository.options(
           type,
           page: page++,
@@ -227,4 +244,7 @@ final optionsProvider = FutureProvider.autoDispose
         all.addAll(result.items);
         if (!result.hasMore) return all;
       }
+      throw const CatalogException(
+        'Too many catalogue options. Please contact support.',
+      );
     }, retry: (retryCount, error) => null);

@@ -36,6 +36,9 @@ export interface ProductPage {
 
 export interface StoreProvider {
   readonly name: string;
+  // Optional explicit capability. Unstable catalogues cannot claim full coverage across runs.
+  readonly checkpointVersion?: string;
+  readonly stablePagination?: boolean;
   searchProducts(
     search?: ProductSearch,
     context?: { signal?: AbortSignal },

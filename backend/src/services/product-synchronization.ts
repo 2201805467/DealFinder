@@ -1,5 +1,7 @@
 import { setTimeout as sleep } from 'node:timers/promises';
 import { z } from 'zod';
+import { createHash } from 'node:crypto';
+import { Prisma } from '../generated/prisma/client.js';
 import type {
   PrismaClient,
   Merchant,
@@ -25,6 +27,15 @@ const pageSchema = z.object({
   nextCursor: z.string().min(1).optional(),
   partial: z.boolean().optional(),
   skippedCount: z.number().int().nonnegative(),
+});
+const checkpointSchema = z.object({
+  fingerprint: z.string(),
+  pageSize: z.number().int().min(1).max(100),
+  page: z.number().int().min(1).max(10000000),
+  cursor: z.string().max(4096).optional(),
+  offset: z.number().int().min(0).max(100),
+  savedAt: z.string(),
+  incomplete: z.boolean().default(false),
 });
 export interface SyncResult {
   merchantId: string;
@@ -111,6 +122,8 @@ export class ProductSynchronizationService {
             return skipped('SOURCE_DISABLED');
           if (!current.isSynthetic || current.sourceType !== 'SYNTHETIC')
             return skipped('SOURCE_NOT_APPROVED');
+          if (current.syncNotBefore && current.syncNotBefore > new Date())
+            return skipped('RATE_LIMIT_COOLDOWN');
           if (!force && current.nextSyncAt && current.nextSyncAt > new Date())
             return skipped('NOT_DUE');
           await this.db.syncRun.updateMany({
@@ -123,7 +136,15 @@ export class ProductSynchronizationService {
                 'Previous owner exited before finalizing. Existing products were preserved.',
             },
           });
-          return this.execute(current, provider, signal);
+          // A new generation fences any old batch whose coordinator connection died.
+          // The merchant row lock serializes this claim with ingestion's policy lock.
+          const claimed = await this.db.merchant.update({
+            where: { id: merchantId },
+            data: { syncGeneration: { increment: 1 } },
+          });
+          return this.execute(claimed, provider, signal, async () => {
+            await lock.$queryRaw`SELECT 1`;
+          });
         },
         { timeout: this.options.maxRunMs + 20000, maxWait: 2000 },
       );
@@ -138,6 +159,7 @@ export class ProductSynchronizationService {
     merchant: Merchant,
     provider: StoreProvider,
     externalSignal?: AbortSignal,
+    coordinatorAlive?: () => Promise<void>,
   ): Promise<SyncResult> {
     const started = Date.now();
     const run = await this.db.syncRun.create({
@@ -161,13 +183,37 @@ export class ProductSynchronizationService {
     let pages = 0;
     let processed = 0;
     let skippedCount = 0;
-    let pageNumber = 1;
-    let cursor: string | undefined;
-    const pageSize = Math.min(this.options.pageSize, this.options.maxProducts);
+    let retryNotBefore = 0;
+    const fingerprint = createHash('sha256')
+      .update(
+        JSON.stringify([
+          merchant.websiteUrl,
+          provider.name,
+          provider.checkpointVersion ?? 'unversioned',
+        ]),
+      )
+      .digest('hex');
+    const saved = checkpointSchema.safeParse(merchant.syncCheckpoint);
+    const resume =
+      saved.success &&
+      saved.data.fingerprint === fingerprint &&
+      Date.now() - Date.parse(saved.data.savedAt) < 86400000
+        ? saved.data
+        : undefined;
+    let pageNumber = resume?.page ?? 1;
+    let cursor: string | undefined = resume?.cursor;
+    let offset = resume?.offset ?? 0;
+    let checkpoint: Prisma.InputJsonValue | null = resume ?? null;
+    const resumed = resume !== undefined;
+    let coverageIncomplete = resume?.incomplete ?? false;
+    const pageSize =
+      resume?.pageSize ??
+      Math.min(this.options.pageSize, this.options.maxProducts);
     const seenCursors = new Set<string>();
     try {
       while (true) {
         signal.throwIfAborted();
+        await coordinatorAlive?.();
         if (pages >= this.options.maxPages) throw new StopRun('PAGE_LIMIT');
         if (processed >= this.options.maxProducts)
           throw new StopRun('PRODUCT_LIMIT');
@@ -191,6 +237,21 @@ export class ProductSynchronizationService {
             break;
           } catch (error) {
             if (signal.aborted) throw error;
+            if (
+              error instanceof ProviderError &&
+              error.code === 'RATE_LIMIT' &&
+              error.retryAfterSeconds !== undefined &&
+              Number.isFinite(error.retryAfterSeconds) &&
+              error.retryAfterSeconds > 0
+            ) {
+              retryNotBefore = Math.max(
+                retryNotBefore,
+                Math.min(
+                  253402300799000,
+                  Date.now() + error.retryAfterSeconds * 1000,
+                ),
+              );
+            }
             const retryable =
               error instanceof ProviderError &&
               ['NETWORK', 'TIMEOUT', 'RATE_LIMIT', 'UPSTREAM'].includes(
@@ -219,6 +280,7 @@ export class ProductSynchronizationService {
           }
         }
         signal.throwIfAborted();
+        await coordinatorAlive?.();
         const parsed = pageSchema.safeParse(result);
         if (!parsed.success || parsed.data.products.length > search.pageSize!)
           throw new ProviderError(
@@ -235,14 +297,75 @@ export class ProductSynchronizationService {
             'Provider returned a different page.',
           );
         const data = parsed.data;
-        if (data.products.length) {
-          const accepted = result!.products.slice(0, remaining);
-          await this.ingestion.ingest(
-            merchant.id,
-            accepted.map((product) => ({ product })),
-            { syncRunId: run.id, signal, syntheticOnly: true },
+        if (
+          (data.total === 0 && data.products.length > 0) ||
+          (data.totalPages === 0 && data.total > 0)
+        )
+          throw new ProviderError(
+            'INVALID_RESPONSE',
+            'Provider pagination metadata is inconsistent.',
           );
+        coverageIncomplete ||= data.partial === true || data.skippedCount > 0;
+        if (data.nextCursor && data.nextCursor === cursor)
+          throw new StopRun('REPEATED_CURSOR');
+        if (
+          !data.products.length &&
+          data.total > 0 &&
+          pageNumber < data.totalPages
+        )
+          throw new StopRun('UNEXPECTED_EMPTY_PAGE');
+        if (offset > data.products.length)
+          throw new StopRun('CHECKPOINT_PAGE_CHANGED');
+        const accepted = result!.products.slice(offset, offset + remaining);
+        const consumed = offset + accepted.length;
+        const pageFinished = consumed >= data.products.length;
+        const complete =
+          pageFinished &&
+          !data.nextCursor &&
+          (cursor !== undefined ||
+            pageNumber >= data.totalPages ||
+            data.total === 0);
+        checkpoint = complete
+          ? null
+          : {
+              fingerprint,
+              pageSize,
+              page: pageFinished
+                ? data.nextCursor
+                  ? pageNumber
+                  : pageNumber + 1
+                : pageNumber,
+              ...(pageFinished
+                ? data.nextCursor
+                  ? { cursor: data.nextCursor }
+                  : {}
+                : cursor
+                  ? { cursor }
+                  : {}),
+              offset: pageFinished ? 0 : consumed,
+              savedAt: new Date().toISOString(),
+              incomplete: coverageIncomplete,
+            };
+        if (data.products.length) {
+          if (accepted.length)
+            await this.ingestion.ingest(
+              merchant.id,
+              accepted.map((product) => ({ product })),
+              {
+                syncRunId: run.id,
+                signal,
+                syntheticOnly: true,
+                checkpoint,
+                generation: merchant.syncGeneration,
+              },
+            );
           processed += accepted.length;
+        } else {
+          const updated = await this.db.merchant.updateMany({
+            where: { id: merchant.id, syncGeneration: merchant.syncGeneration },
+            data: { syncCheckpoint: checkpoint ?? Prisma.DbNull },
+          });
+          if (updated.count !== 1) throw new StopRun('COORDINATOR_LOST');
         }
         pages++;
         skippedCount += data.skippedCount;
@@ -250,8 +373,7 @@ export class ProductSynchronizationService {
           where: { id: run.id },
           data: { pageCount: pages, skippedCount },
         });
-        if (data.products.length > remaining)
-          throw new StopRun('PRODUCT_LIMIT');
+        if (!pageFinished) throw new StopRun('PRODUCT_LIMIT');
         if (data.partial || data.skippedCount > 0)
           throw new StopRun('PARTIAL_RESPONSE');
         if (data.nextCursor) {
@@ -259,13 +381,17 @@ export class ProductSynchronizationService {
             throw new StopRun('REPEATED_CURSOR');
           seenCursors.add(data.nextCursor);
           cursor = data.nextCursor;
-        } else if (cursor || pageNumber >= data.totalPages || data.total === 0)
+        } else if (complete) {
+          if (coverageIncomplete) throw new StopRun('INCOMPLETE_CYCLE');
+          if (resumed && !provider.stablePagination)
+            throw new StopRun('UNSTABLE_PAGINATION');
           break;
-        else {
+        } else {
           if (data.products.length === 0)
             throw new StopRun('UNEXPECTED_EMPTY_PAGE');
           pageNumber++;
         }
+        offset = 0;
       }
     } catch (error) {
       status = externalSignal?.aborted
@@ -286,9 +412,18 @@ export class ProductSynchronizationService {
       clearTimeout(timer);
     }
     const durationMs = Date.now() - started;
-    await this.db.$transaction([
-      this.db.syncRun.update({
-        where: { id: run.id },
+    await this.db.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM merchants WHERE id=${merchant.id}::uuid FOR UPDATE`;
+      const owner = await tx.merchant.findUniqueOrThrow({
+        where: { id: merchant.id },
+      });
+      const owns = owner.syncGeneration === merchant.syncGeneration;
+      if (!owns) {
+        status = processed > 0 ? 'PARTIAL' : 'FAILED';
+        errorCode = 'COORDINATOR_LOST';
+      }
+      await tx.syncRun.updateMany({
+        where: { id: run.id, status: 'RUNNING' },
         data: {
           status,
           finishedAt: new Date(),
@@ -302,16 +437,28 @@ export class ProductSynchronizationService {
             ? 'Synchronization ended with incomplete coverage. Previously stored products were preserved.'
             : null,
         },
-      }),
-      this.db.merchant.update({
-        where: { id: merchant.id },
-        data: {
-          nextSyncAt: new Date(
-            Date.now() + merchant.syncIntervalSeconds * 1000,
-          ),
-        },
-      }),
-    ]);
+      });
+      if (owns)
+        await tx.merchant.update({
+          where: { id: merchant.id },
+          data: {
+            nextSyncAt: new Date(
+              Math.max(
+                retryNotBefore,
+                Date.now() +
+                  (checkpoint &&
+                  ['PAGE_LIMIT', 'PRODUCT_LIMIT', 'REQUEST_LIMIT'].includes(
+                    errorCode ?? '',
+                  )
+                    ? this.options.pollMs
+                    : merchant.syncIntervalSeconds * 1000),
+              ),
+            ),
+            syncNotBefore:
+              retryNotBefore > Date.now() ? new Date(retryNotBefore) : null,
+          },
+        });
+    });
     const outcome = {
       merchantId: merchant.id,
       status,
